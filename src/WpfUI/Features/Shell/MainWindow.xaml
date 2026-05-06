@@ -1,0 +1,91 @@
+<Window x:Class="WpfUI.Features.Shell.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:core="clr-namespace:WpfUI.Core.Base"
+        xmlns:analytics="clr-namespace:WpfUI.Features.LiveAnalytics"
+        xmlns:shell="clr-namespace:WpfUI.Features.Shell"
+        xmlns:settings="clr-namespace:WpfUI.Features.Settings"
+        mc:Ignorable="d"
+        Title="{Binding Title.Value}" Height="800" Width="1200"
+        Background="#F5F5F7" TextElement.Foreground="#2C3E50">
+
+    <Window.Resources>
+        <!-- ViewModel と View のマッピング設定 -->
+        <DataTemplate DataType="{x:Type analytics:LiveAnalyticsViewModel}">
+            <analytics:LiveAnalyticsView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type settings:SettingsViewModel}">
+            <settings:SettingsView />
+        </DataTemplate>
+        
+        <!-- DataTemplate DataType="{x:Type explorer:DataExplorerViewModel}">
+            <explorer:DataExplorerView />
+        </DataTemplate -->
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240"/>
+            <!-- Navigation SideBar -->
+            <ColumnDefinition Width="*"/>
+            <!-- Main Content -->
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar Navigation -->
+        <Border Background="#212529" Grid.Column="0">
+            <StackPanel Margin="16">
+                <TextBlock Text="TDMS ANALYZER" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,32"/>
+
+                <!-- Button Content="Data Explorer" 
+                        Command="{Binding NavigateCommand}" 
+                        CommandParameter="{ x:Static corebase:DataExplorer }"
+                        
+                        
+                        Command="{Binding NavigateCommand}" 
+                        CommandParameter="{x:Static corebase:ViewType.DataExplorer}"
+                        Style="{StaticResource NavButtonStyle}"/ -->
+                <Button Content="Live Analytics" 
+                        Command="{Binding NavigateCommand}" 
+                        CommandParameter="{x:Static core:ViewType.LiveAnalytics}"
+                        Style="{StaticResource NavButtonStyle}" Margin="0,8,0,0"/>
+                <Button Content="System Settings"
+                        Command="{Binding NavigateCommand}" 
+                        CommandParameter="{x:Static core:ViewType.Settings}"
+                        Style="{StaticResource NavButtonStyle}" Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="60"/>
+                <!-- Header -->
+                <RowDefinition Height="*"/>
+                <!-- Feature View -->
+            </Grid.RowDefinitions>
+
+            <!-- Header Panel -->
+            <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                <DockPanel Margin="20,0">
+                    <TextBlock Text="{Binding ActiveFeatureName.Value}" 
+                               VerticalAlignment="Center" FontSize="20" FontWeight="SemiBold"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <!-- ステータス表示など -->
+                        <Ellipse Width="10" Height="10" Fill="#2ECC71" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="System Ready" VerticalAlignment="Center" Foreground="#7F8C8D"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- 画面遷移の本体：ContentControl が CurrentViewModel の型に合わせて View を差し替える -->
+            <ContentControl Grid.Row="1" Content="{Binding CurrentViewModel.Value}" Margin="20"/>
+
+
+            <!-- ContentControl.ContentTransitionSelector>
+                <!- - 必要に応じてフェードインなどの Transition を追加可能 - ->
+            </ContentControl.ContentTransitionSelector -->
+        </Grid>
+    </Grid>
+</Window>

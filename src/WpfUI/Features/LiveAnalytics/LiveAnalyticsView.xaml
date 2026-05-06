@@ -1,0 +1,34 @@
+<core:ViewBase x:TypeArguments="local:LiveAnalyticsViewModel"
+               x:Class="WpfUI.Features.LiveAnalytics.LiveAnalyticsView"
+               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+               xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+               xmlns:core="clr-namespace:WpfUI.Core.Base"
+               xmlns:local="clr-namespace:WpfUI.Features.LiveAnalytics"
+               xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+               mc:Ignorable="d"
+               d:DesignHeight="720" d:DesignWidth="1280"
+               d:DataContext="{d:DesignInstance local:LiveAnalyticsViewModel}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Margin="10">
+            <Button Content="Load TDMS Data"
+                    Command="{Binding LoadDataCommand}"
+                    Padding="15,5"/>
+            <ProgressBar
+				Width="100"
+				Height="4"
+				Margin="20,0"
+				IsIndeterminate="True"
+				Visibility="{Binding IsBusyVisibility.Value}" />
+        </StackPanel>
+
+        <!-- ScottPlot 5 Control -->
+        <sp:WpfPlot x:Name="FormsPlot" Grid.Row="1"/>
+    </Grid>
+</core:ViewBase>
