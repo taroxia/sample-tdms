@@ -1,4 +1,8 @@
-﻿using WpfUI.Infrastructure.Persistence.Tdms.Native;
+// ────────────────────────────────
+//
+// ────────────────────────────────
+
+using WpfUI.Infrastructure.Persistence.Tdms.Native;
 
 namespace WpfUI.Core.Abstracts;
 

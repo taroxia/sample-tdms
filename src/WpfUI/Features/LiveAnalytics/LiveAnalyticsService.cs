@@ -1,4 +1,8 @@
-﻿using WpfUI.Core.Abstracts;
+// ────────────────────────────────
+//
+// ────────────────────────────────
+
+using WpfUI.Core.Abstracts;
 
 namespace WpfUI.Features.LiveAnalytics;
 

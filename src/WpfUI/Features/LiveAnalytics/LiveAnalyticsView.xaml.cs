@@ -1,5 +1,9 @@
-﻿using Reactive.Bindings.Extensions;
+// ────────────────────────────────
+//
+// ────────────────────────────────
+
 using System.Reactive.Linq;
+using Reactive.Bindings.Extensions;
 using WpfUI.Core.Base;
 
 namespace WpfUI.Features.LiveAnalytics;
@@ -9,22 +13,20 @@ public partial class LiveAnalyticsView : ViewBase<LiveAnalyticsViewModel>
     public LiveAnalyticsView() : base()
     {
         InitializeComponent();
-
     }
 
     protected override void OnViewModelAttached(LiveAnalyticsViewModel? viewModel)
     {
-        if (viewModel == null) return;
+        //        if (viewModel?.PlotInstance?.Value is not { } initialPlot) return;
 
-        //DataContext = viewModel;
+        if (viewModel is null) return;
+
         viewModel.PlotInstance
-            .Where(p => p != null)
-            .ObserveOnUIDispatcher()
+            .Where(p => p is not null)
+            .ObserveOn(new System.Windows.Threading.DispatcherSynchronizationContext(this.Dispatcher))
             .Subscribe(p =>
             {
-                // ScottPlot 5 では、既存のPlotオブジェクトをリセットして再描画
                 FormsPlot.Plot.Clear();
-                // 内部のプロットロジックを同期（簡易実装例）
                 FormsPlot.Reset(p!);
                 FormsPlot.Refresh();
             })

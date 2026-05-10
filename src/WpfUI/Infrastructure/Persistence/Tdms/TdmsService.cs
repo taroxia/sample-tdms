@@ -1,4 +1,8 @@
-﻿using System.Runtime.CompilerServices;
+// ────────────────────────────────
+//
+// ────────────────────────────────
+
+using System.Runtime.CompilerServices;
 using WpfUI.Core.Abstracts;
 using WpfUI.Infrastructure.Persistence.Tdms.Native;
 

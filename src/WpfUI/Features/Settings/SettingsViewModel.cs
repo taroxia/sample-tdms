@@ -1,4 +1,8 @@
-﻿using WpfUI.Core.Base;
+// ────────────────────────────────
+//
+// ────────────────────────────────
+
+using WpfUI.Core.Base;
 
 namespace WpfUI.Features.Settings;
 

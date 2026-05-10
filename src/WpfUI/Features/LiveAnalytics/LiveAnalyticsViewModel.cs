@@ -1,8 +1,12 @@
-﻿using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
-using ScottPlot;
+// ────────────────────────────────
+//
+// ────────────────────────────────
+
 using System.Reactive.Linq;
 using System.Windows;
+using Reactive.Bindings;
+using Reactive.Bindings.Extensions;
+using ScottPlot;
 using WpfUI.Core.Base;
 
 namespace WpfUI.Features.LiveAnalytics;

@@ -1,4 +1,8 @@
-﻿using System.Windows.Controls;
+// ────────────────────────────────
+//
+// ────────────────────────────────
+
+using System.Windows.Controls;
 
 namespace WpfUI.Core.Base;
 

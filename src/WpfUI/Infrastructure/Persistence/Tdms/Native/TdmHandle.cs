@@ -1,4 +1,8 @@
-﻿namespace WpfUI.Infrastructure.Persistence.Tdms.Native;
+// ────────────────────────────────
+//
+// ────────────────────────────────
+
+namespace WpfUI.Infrastructure.Persistence.Tdms.Native;
 
 using Microsoft.Win32.SafeHandles;
 

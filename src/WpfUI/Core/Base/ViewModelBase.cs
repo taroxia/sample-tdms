@@ -1,5 +1,9 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+// ────────────────────────────────
+//
+// ────────────────────────────────
+
 using System.Reactive.Disposables;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace WpfUI.Core.Base;
 
