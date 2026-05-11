@@ -22,6 +22,7 @@ public partial class MainViewModel : ViewModelBase
 
     // --- Commands ---
     public ReactiveCommandSlim<NavigationItem> NavigateCommand { get; }
+    public ReactiveCommand ToggleSidebarCommand { get; } = new();
 
     public MainViewModel(INavigationService navigation)
     {
@@ -43,5 +44,9 @@ public partial class MainViewModel : ViewModelBase
                 }
             })
             .AddTo(_disposables);
+
+        ToggleSidebarCommand.Subscribe(() =>
+            navigation.IsSidebarExpanded.Value = !navigation.IsSidebarExpanded.Value
+        ).AddTo(_disposables);
     }
 }

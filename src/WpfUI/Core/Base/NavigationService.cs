@@ -11,12 +11,8 @@ using Reactive.Bindings.Extensions;
 
 namespace WpfUI.Core.Base;
 
-public record NavigationItem(Type ViewType, Type ViewModelType, string Title, INavigationService NavService)
+public record NavigationItem(Type ViewType, Type ViewModelType, string Title, string IconKey, INavigationService NavService)
 {
-    public string Title { get; } = Title;
-    public string Icon { get; init; } = string.Empty;
-    public Type ViewType { get; } = ViewType;
-    public Type ViewModelType { get; } = ViewModelType;
     //public ReadOnlyReactivePropertySlim<bool> IsActive { get; } = NavService.CurrentView
     //    .Select(v => v?.GetType() == ViewType)
     //    .ToReadOnlyReactivePropertySlim();
@@ -33,12 +29,13 @@ public sealed class NavigationService : INavigationService
     private readonly ReactiveProperty<NavigationItem?> _selectedItem = new();
     public IReadOnlyReactiveProperty<NavigationItem?> SelectedItem => _selectedItem;
 
+    public ReactivePropertySlim<bool> IsSidebarExpanded { get; } = new(true);
 
     public NavigationService(IServiceProvider provider, IEnumerable<NavigationData> data)
     {
         _provider = provider;
 
-        Items = data.Select(x => new NavigationItem(x.ViewType, x.ViewModelType, x.Title, this))
+        Items = data.Select(x => new NavigationItem(x.ViewType, x.ViewModelType, x.Title, x.IconKey, this))
                     .ToList();
 
         _selectedItem
@@ -68,11 +65,9 @@ public sealed class NavigationService : INavigationService
 
     public void NavigateTo(NavigationItem Item)
     {
-        if (_selectedItem.Value == Item) return;
-
-        _selectedItem.Value = Item;
-        //_currentView.Value = _provider.GetRequiredService(_selectedItem.Value.ViewType);
-        //var viewModel = _provider.GetRequiredService(_selectedItem.Value.ViewModelType);
-        //((FrameworkElement)_currentView.Value).DataContext = viewModel;
+        if (_selectedItem.Value != Item)
+        {
+            _selectedItem.Value = Item;
+        }
     }
 }

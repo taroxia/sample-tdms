@@ -24,7 +24,7 @@
     <Page Include="App.xaml" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!--ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
     <PackageReference Include="ReactiveProperty" Version="9.8.0" />
@@ -32,7 +32,7 @@
     <PackageReference Include="ScottPlot.WPF" Version="5.1.58" />
     <PackageReference Include="SkiaSharp" Version="3.119.2" />
     <PackageReference Include="Spectre.Console.Cli" Version="0.55.0" />
-  </ItemGroup>
+  </ItemGroup -->
 
   <ItemGroup>
     <Folder Include="Core\Themes\" />

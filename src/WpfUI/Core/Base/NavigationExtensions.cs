@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WpfUI.Core.Base;
 
-public record NavigationData(Type ViewType, Type ViewModelType, string Title);
+public record NavigationData(Type ViewType, Type ViewModelType, string Title, string IconKey);
 
 public static class NavigationExtensions
 {
@@ -29,13 +29,13 @@ public static class NavigationExtensions
     {
         public List<NavigationData> NavigationList { get; } = [];
 
-        public Builder Add<TView, TViewModel>(string Title)
+        public Builder Add<TView, TViewModel>(string title, string iconkey)
             where TView : class
             where TViewModel : class
         {
             services.AddTransient<TView>();
             services.AddTransient<TViewModel>();
-            NavigationList.Add(new NavigationData(typeof(TView), typeof(TViewModel), Title));
+            NavigationList.Add(new NavigationData(typeof(TView), typeof(TViewModel), title, iconkey));
             return this;
         }
     }

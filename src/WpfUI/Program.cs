@@ -7,7 +7,6 @@ using Microsoft.Extensions.Hosting;
 using Spectre.Console.Cli;
 using WpfUI.Core.Abstracts;
 using WpfUI.Core.Base;
-using WpfUI.Features.Dashboard;
 using WpfUI.Features.LiveAnalytics;
 using WpfUI.Features.Settings;
 using WpfUI.Features.Shell;
@@ -39,8 +38,8 @@ public class Program
 
         // --- Navigation Mapping (The Source of Truth) ---
         builder.Services.AddNavigation(nav => nav
-            .Add<LiveAnalyticsView, LiveAnalyticsViewModel>("Live Analytics")
-            .Add<SettingsView, SettingsViewModel>("Settings")
+            .Add<LiveAnalyticsView, LiveAnalyticsViewModel>("Live Analytics", "Icon.Waveform")
+            .Add<SettingsView, SettingsViewModel>("Settings", "Icon.Settings")
         );
 
         builder.Services.AddSingleton<LiveAnalyticsService>();
