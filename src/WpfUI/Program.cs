@@ -10,6 +10,8 @@ using WpfUI.Core.Base;
 using WpfUI.Features.LiveAnalytics;
 using WpfUI.Features.Settings;
 using WpfUI.Features.Shell;
+using WpfUI.Features.Waveform;
+using WpfUI.Features.Waveform.Explorer;
 using WpfUI.Infrastructure.Cli;
 using WpfUI.Infrastructure.Persistence.Tdms;
 
@@ -38,6 +40,8 @@ public class Program
 
         // --- Navigation Mapping (The Source of Truth) ---
         builder.Services.AddNavigation(nav => nav
+            .Add<WaveformView, WaveformViewModel,
+                 WaveformExpView, WaveformExpViewModel>("Wave", "Icon.Waveform")
             .Add<LiveAnalyticsView, LiveAnalyticsViewModel>("Live Analytics", "Icon.Waveform")
             .Add<SettingsView, SettingsViewModel>("Settings", "Icon.Settings")
         );

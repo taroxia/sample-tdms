@@ -8,23 +8,23 @@ using Reactive.Bindings;
 using Reactive.Bindings.Extensions;
 using WpfUI.Core.Base;
 
-namespace WpfUI.Features.Wave.Explorer;
+namespace WpfUI.Features.Waveform.Explorer;
 
-public partial class WaveExplorerView : ViewBase<WaveExplorerViewModel>
+public partial class WaveformExpView : ViewBase<WaveformExpViewModel>
 {
     public ReadOnlyReactiveProperty<string> FileName { get; set; }
 
-    public WaveExplorerView() : base()
+    public WaveformExpView() : base()
     {
         InitializeComponent();
     }
-    protected override void OnViewModelAttached(WaveExplorerViewModel? viewModel)
+    protected override void OnViewModelAttached(WaveformExpViewModel? viewModel)
     {
         if (viewModel is null) return;
 
-        FileName = viewModel.DroppedFilePath
-    .Select(path => string.IsNullOrEmpty(path) ? "" : Path.GetFileName(path))
-    .ToReadOnlyReactiveProperty().AddTo(viewModel._disposables);
+        //    FileName = viewModel.DroppedFilePath
+        //.Select(path => string.IsNullOrEmpty(path) ? "" : Path.GetFileName(path))
+        //.ToReadOnlyReactiveProperty().AddTo(viewModel._disposables);
 
     }
 }

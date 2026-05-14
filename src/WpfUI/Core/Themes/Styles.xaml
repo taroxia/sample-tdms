@@ -29,7 +29,7 @@
       <Setter.Value>
         <ControlTemplate TargetType="RadioButton">
           <Border x:Name="RootBorder" Background="{TemplateBinding Background}" CornerRadius="6">
-            <ContentPresenter VerticalAlignment="Center" Margin="16,0"/>
+            <ContentPresenter VerticalAlignment="Center" Margin="0,0"/>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
@@ -44,4 +44,22 @@
       </Setter.Value>
     </Setter>
   </Style>
+
+  <Style x:Key="ExplorerPanelBorderStyle" TargetType="Border">
+    <Setter Property="Background" Value="#1C1F2E"/>
+    <Setter Property="BorderBrush" Value="{StaticResource GlassBorderBrush}"/>
+    <Setter Property="BorderThickness" Value="0,0,1,0"/>
+    <Setter Property="Width" Value="280"/>
+    <!-- Setter Property="RenderTransform">
+      <TranslateTransform X="0"/>
+    </Setter -->
+  </Style>
+
+  <Style x:Key="ExplorerHeaderStyle" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}"/>
+    <Setter Property="FontSize" Value="18"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Margin" Value="20,24,20,16"/>
+  </Style>
+
 </ResourceDictionary>

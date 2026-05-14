@@ -35,7 +35,7 @@ public sealed class TdmsService : ITdmsService
                     //string cDesc = file.GetChannelDescription(cHandle);
 
                     ulong numValues = file.GetNumDataValues(cHandle);
-                    results.Add(new TdmsChannelInfo(gName, cName, numValues));
+                    results.Add(new TdmsChannelInfo(filePath, gName, cName, numValues));
                 }
             }
             return (IReadOnlyList<TdmsChannelInfo>)results;

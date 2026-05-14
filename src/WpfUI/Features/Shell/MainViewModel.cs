@@ -16,6 +16,8 @@ public partial class MainViewModel : ViewModelBase
 
     // --- State Properties ---
     public ReadOnlyReactivePropertySlim<object?> CurrentView { get; }
+    public ReadOnlyReactivePropertySlim<object?> CurrentExplorerView { get; }
+    public ReadOnlyReactivePropertySlim<bool> HasExplorer { get; }
 
     // アプリケーション名（タイトルバー用）
     public ReactivePropertySlim<string> Title { get; } = new("TDMS Analysis Dashboard");
@@ -23,6 +25,7 @@ public partial class MainViewModel : ViewModelBase
     // --- Commands ---
     public ReactiveCommandSlim<NavigationItem> NavigateCommand { get; }
     public ReactiveCommand ToggleSidebarCommand { get; } = new();
+    public ReactiveCommand ToggleExplorerCommand { get; } = new();
 
     public MainViewModel(INavigationService navigation)
     {
@@ -33,20 +36,27 @@ public partial class MainViewModel : ViewModelBase
             .ToReadOnlyReactivePropertySlim()
             .AddTo(_disposables);
 
+        CurrentExplorerView = navigation.CurrentExplorerView
+            .ToReadOnlyReactivePropertySlim()
+            .AddTo(_disposables);
+
+        HasExplorer = navigation.CurrentExplorerView
+                .Select(view => view is not null)
+                .ToReadOnlyReactivePropertySlim()
+                .AddTo(_disposables);
+
         // 画面遷移コマンドの実装
         NavigateCommand = new ReactiveCommandSlim<NavigationItem>()
-            .WithSubscribe(x =>
-            {
-                navigation.NavigateTo(x);
-                foreach (var navItem in Navigation.Items)
-                {
-                    navItem.IsActive.Value = (navItem == x);
-                }
-            })
+            .WithSubscribe(x => navigation.NavigateTo(x))
             .AddTo(_disposables);
 
         ToggleSidebarCommand.Subscribe(() =>
             navigation.IsSidebarExpanded.Value = !navigation.IsSidebarExpanded.Value
+        ).AddTo(_disposables);
+
+
+        ToggleExplorerCommand.Subscribe(() =>
+            navigation.IsExplorerExpanded.Value = !navigation.IsExplorerExpanded.Value
         ).AddTo(_disposables);
     }
 }

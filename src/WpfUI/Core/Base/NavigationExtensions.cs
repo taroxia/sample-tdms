@@ -11,7 +11,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace WpfUI.Core.Base;
 
-public record NavigationData(Type ViewType, Type ViewModelType, string Title, string IconKey);
+public record NavigationData(
+    string Title, string IconKey,
+    Type ViewType,
+    Type ViewModelType,
+    Type? ExplorerViewType = null,
+    Type? ExplorerViewModelType = null);
 
 public static class NavigationExtensions
 {
@@ -35,7 +40,28 @@ public static class NavigationExtensions
         {
             services.AddTransient<TView>();
             services.AddTransient<TViewModel>();
-            NavigationList.Add(new NavigationData(typeof(TView), typeof(TViewModel), title, iconkey));
+            NavigationList.Add(new NavigationData(
+                title, iconkey,
+                typeof(TView),
+                typeof(TViewModel)));
+            return this;
+        }
+
+        public Builder Add<TView, TViewModel, TExplorerView, TExplorerViewModel>(string title, string iconkey)
+            where TView : class
+            where TViewModel : class
+            where TExplorerView : class
+            where TExplorerViewModel : class
+        {
+            services.AddTransient<TView>();
+            services.AddTransient<TViewModel>();
+            services.AddTransient<TExplorerView>();
+            services.AddTransient<TExplorerViewModel>();
+            NavigationList.Add(new NavigationData(
+                title, iconkey, typeof(TView),
+                typeof(TViewModel),
+                typeof(TExplorerView),
+                typeof(TExplorerViewModel)));
             return this;
         }
     }

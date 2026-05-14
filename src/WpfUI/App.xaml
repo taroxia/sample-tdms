@@ -5,6 +5,7 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <!-- ここで共通スタイルを読み込む -->
+        <ResourceDictionary Source="/Core/Themes/Converters.xaml"/>
         <ResourceDictionary Source="/Core/Themes/Icons.xaml"/>
         <ResourceDictionary Source="/Core/Themes/Styles.xaml"/>
       </ResourceDictionary.MergedDictionaries>

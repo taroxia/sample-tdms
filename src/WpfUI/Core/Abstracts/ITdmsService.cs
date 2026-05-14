@@ -19,6 +19,7 @@ public enum DataType
 }
 
 public record TdmsChannelInfo(
+    string FilePath,
     string GroupName,
     string ChannelName,
     ulong SampleCount,
