@@ -7,7 +7,6 @@ using Microsoft.Extensions.Hosting;
 using Spectre.Console.Cli;
 using WpfUI.Core.Abstracts;
 using WpfUI.Core.Base;
-using WpfUI.Features.LiveAnalytics;
 using WpfUI.Features.Settings;
 using WpfUI.Features.Shell;
 using WpfUI.Features.Waveform;
@@ -42,11 +41,8 @@ public class Program
         builder.Services.AddNavigation(nav => nav
             .Add<WaveformView, WaveformViewModel,
                  WaveformExpView, WaveformExpViewModel>("Wave", "Icon.Waveform")
-            .Add<LiveAnalyticsView, LiveAnalyticsViewModel>("Live Analytics", "Icon.Waveform")
             .Add<SettingsView, SettingsViewModel>("Settings", "Icon.Settings")
         );
-
-        builder.Services.AddSingleton<LiveAnalyticsService>();
 
         //ConfigureServices(builder.Services);
         builder.Services.AddSingleton<App>();

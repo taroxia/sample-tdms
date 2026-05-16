@@ -6,7 +6,6 @@ using System.Windows;
 using ScottPlot;
 using WpfUI.Core.Abstracts;
 using WpfUI.Core.Base;
-using WpfUI.Features.LiveAnalytics;
 
 namespace WpfUI.Features.Waveform;
 

@@ -4,6 +4,7 @@
 
 using System.Windows;
 using System.Windows.Media;
+using R3;
 
 namespace WpfUI.Features.Shell;
 

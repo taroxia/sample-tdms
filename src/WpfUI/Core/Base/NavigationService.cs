@@ -2,12 +2,9 @@
 //
 // ────────────────────────────────
 
-using System.Reactive.Disposables;
-using System.Reactive.Linq;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
-using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
+using R3;
 
 namespace WpfUI.Core.Base;
 
@@ -17,87 +14,101 @@ public record NavigationItem(
     Type ViewModelType,
     Type? ExplorerViewType,
     Type? ExplorerViewModelType,
-    INavigationService NavService)
+    BindableReactiveProperty<object?> CurrentView) : IDisposable
 {
-    public ReadOnlyReactivePropertySlim<bool> IsActive { get; } = NavService.CurrentView
+    private readonly CompositeDisposable _disposables = new();
+    public void Dispose() => _disposables.Dispose();
+
+    public BindableReactiveProperty<bool> IsActive { get; } = CurrentView
         .Select(v => v?.GetType() == ViewType)
-        .ToReadOnlyReactivePropertySlim(false);
-    //public ReactivePropertySlim<bool> IsActive { get; } = new(false);
+        .ToBindableReactiveProperty(false);
 }
 
-public sealed class NavigationService : INavigationService
+public sealed class NavigationService : BaseService, INavigationService
 {
     private readonly IServiceProvider _provider;
     public IReadOnlyList<NavigationItem> Items { get; }
 
-    private readonly ReactiveProperty<object?> _currentView = new();
-    public IReadOnlyReactiveProperty<object?> CurrentView => _currentView;
+    public BindableReactiveProperty<object?> CurrentView { get; } = new();
+    public BindableReactiveProperty<object?> CurrentExplorerView { get; } = new();
+    public ReactiveProperty<NavigationItem?> SelectedItem { get; } = new();
 
-    private readonly ReactiveProperty<object?> _currentExplorerView = new();
-    public IReadOnlyReactiveProperty<object?> CurrentExplorerView => _currentExplorerView;
-
-    private readonly ReactiveProperty<NavigationItem?> _selectedItem = new();
-    public IReadOnlyReactiveProperty<NavigationItem?> SelectedItem => _selectedItem;
-
-    public ReactivePropertySlim<bool> IsSidebarExpanded { get; } = new(true);
-    public ReactivePropertySlim<bool> IsExplorerExpanded { get; } = new(true);
+    public ReactiveProperty<bool> IsSidebarExpanded { get; } = new(true);
+    public ReactiveProperty<bool> IsExplorerExpanded { get; } = new(true);
 
     public NavigationService(IServiceProvider provider, IEnumerable<NavigationData> data)
     {
         _provider = provider;
 
-        Items = data.Select(x => new NavigationItem(
-                    x.Title, x.IconKey,
-                    x.ViewType,
-                    x.ViewModelType,
-                    x.ExplorerViewType!,
-                    x.ExplorerViewModelType!, this))
-                    .ToList();
+        Items = data.Select(x =>
+            new NavigationItem(
+                x.Title, x.IconKey,
+                x.ViewType,
+                x.ViewModelType,
+                x.ExplorerViewType!,
+                x.ExplorerViewModelType!,
+                CurrentView))
+             .ToList();
 
-        _selectedItem
+        SelectedItem
             .Pairwise()
-            .Subscribe(pair =>
-            {
-                // 古い View 側の DataContext (ViewModel) を Dispose する
-                if (_currentView.Value is FrameworkElement oldView)
-                {
-                    (oldView.DataContext as IDisposable)?.Dispose();
-                    oldView.DataContext = null; // 参照を切る
-                }
-                if (_currentExplorerView.Value is FrameworkElement oldExplorerView)
-                {
-                    (oldExplorerView.DataContext as IDisposable)?.Dispose();
-                    oldExplorerView.DataContext = null; // 参照を切る
-                }
-
-                // 新しい View/ViewModel の生成と紐付け
-                if (pair.NewItem is not null)
-                {
-                    var newView = (FrameworkElement)_provider.GetRequiredService(pair.NewItem.ViewType);
-                    newView.DataContext = _provider.GetRequiredService(pair.NewItem.ViewModelType);
-                    _currentView.Value = newView;
-                }
-                if (pair.NewItem is not null
-                    && pair.NewItem.ExplorerViewType is not null
-                    && pair.NewItem.ExplorerViewModelType is not null)
-                {
-                    var newView = (FrameworkElement)_provider.GetRequiredService(pair.NewItem.ExplorerViewType);
-                    newView.DataContext = _provider.GetRequiredService(pair.NewItem.ExplorerViewModelType);
-                    _currentExplorerView.Value = newView;
-                }
-                else { _currentExplorerView.Value = null; }
-            })
-            //.AddTo(_disposables)  // Singleton.
-            ;
+            .Subscribe(OnNavigationChanged)
+            .AddTo(_disposables);
 
         if (Items.Any()) NavigateTo(Items.First());
     }
 
+    private void OnNavigationChanged((NavigationItem? Previous, NavigationItem? Current) pair)
+    {
+        DisposeView(CurrentView.Value);
+        DisposeView(CurrentExplorerView.Value);
+
+        if (pair.Current is null)
+        {
+            CurrentView.Value = null;
+            CurrentExplorerView.Value = null;
+            return;
+        }
+
+        var view = (FrameworkElement)_provider.GetRequiredService(pair.Current.ViewType);
+        view.DataContext = _provider.GetRequiredService(pair.Current.ViewModelType);
+        CurrentView.Value = view;
+
+        if (pair.Current.ExplorerViewType is not null)
+        {
+            var explorer = (FrameworkElement)_provider.GetRequiredService(pair.Current.ExplorerViewType);
+            explorer.DataContext = _provider.GetRequiredService(pair.Current.ExplorerViewModelType!);
+            CurrentExplorerView.Value = explorer;
+        }
+        else
+        {
+            CurrentExplorerView.Value = null;
+        }
+    }
+
+    private static void DisposeView(object? viewObj)
+    {
+        if (viewObj is FrameworkElement view)
+        {
+            (view.DataContext as IDisposable)?.Dispose();
+            view.DataContext = null;
+        }
+    }
+
     public void NavigateTo(NavigationItem Item)
     {
-        if (_selectedItem.Value != Item)
+        if (SelectedItem.Value != Item)
         {
-            _selectedItem.Value = Item;
+            SelectedItem.Value = Item;
         }
+    }
+
+    public override void Dispose()
+    {
+        foreach (var item in Items)
+        {
+            item.Dispose();
+        }
+        base.Dispose();
     }
 }

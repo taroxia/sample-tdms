@@ -2,10 +2,7 @@
 //
 // ────────────────────────────────
 
-using System.Reactive.Linq;
-using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
-using Windows.Services.Maps;
+using R3;
 using WpfUI.Core.Base;
 
 namespace WpfUI.Features.Shell;
@@ -15,15 +12,15 @@ public partial class MainViewModel : ViewModelBase
     public INavigationService Navigation { get; }
 
     // --- State Properties ---
-    public ReadOnlyReactivePropertySlim<object?> CurrentView { get; }
-    public ReadOnlyReactivePropertySlim<object?> CurrentExplorerView { get; }
-    public ReadOnlyReactivePropertySlim<bool> HasExplorer { get; }
+    public BindableReactiveProperty<object?> CurrentView { get; }
+    public BindableReactiveProperty<object?> CurrentExplorerView { get; }
+    public BindableReactiveProperty<bool> HasExplorer { get; }
 
     // アプリケーション名（タイトルバー用）
-    public ReactivePropertySlim<string> Title { get; } = new("TDMS Analysis Dashboard");
+    public BindableReactiveProperty<string> Title { get; } = new("TDMS Analysis Dashboard");
 
     // --- Commands ---
-    public ReactiveCommandSlim<NavigationItem> NavigateCommand { get; }
+    public ReactiveCommand<NavigationItem> NavigateCommand { get; } = new();
     public ReactiveCommand ToggleSidebarCommand { get; } = new();
     public ReactiveCommand ToggleExplorerCommand { get; } = new();
 
@@ -31,31 +28,33 @@ public partial class MainViewModel : ViewModelBase
     {
         Navigation = navigation;
 
-        // Service 側の CurrentPage を購読して View に通知
+        // Property.
         CurrentView = navigation.CurrentView
-            .ToReadOnlyReactivePropertySlim()
+            .ToBindableReactiveProperty()
             .AddTo(_disposables);
 
         CurrentExplorerView = navigation.CurrentExplorerView
-            .ToReadOnlyReactivePropertySlim()
+            .ToBindableReactiveProperty()
             .AddTo(_disposables);
 
         HasExplorer = navigation.CurrentExplorerView
                 .Select(view => view is not null)
-                .ToReadOnlyReactivePropertySlim()
+                .ToBindableReactiveProperty()
                 .AddTo(_disposables);
 
-        // 画面遷移コマンドの実装
-        NavigateCommand = new ReactiveCommandSlim<NavigationItem>()
-            .WithSubscribe(x => navigation.NavigateTo(x))
+        // Command.
+        NavigateCommand
+            .Subscribe(x => navigation.NavigateTo(x))
             .AddTo(_disposables);
 
-        ToggleSidebarCommand.Subscribe(() =>
+        ToggleSidebarCommand
+            .Subscribe(_ =>
             navigation.IsSidebarExpanded.Value = !navigation.IsSidebarExpanded.Value
         ).AddTo(_disposables);
 
 
-        ToggleExplorerCommand.Subscribe(() =>
+        ToggleExplorerCommand
+            .Subscribe(_ =>
             navigation.IsExplorerExpanded.Value = !navigation.IsExplorerExpanded.Value
         ).AddTo(_disposables);
     }

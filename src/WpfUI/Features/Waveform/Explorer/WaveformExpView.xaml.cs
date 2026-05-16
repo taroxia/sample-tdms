@@ -2,10 +2,7 @@
 //
 // ────────────────────────────────
 
-using System.IO;
-using System.Reactive.Linq;
-using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
+using R3;
 using WpfUI.Core.Base;
 
 namespace WpfUI.Features.Waveform.Explorer;

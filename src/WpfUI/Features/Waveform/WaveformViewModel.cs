@@ -5,7 +5,7 @@
 using System.IO;
 using System.Windows;
 using OpenTK.Audio.OpenAL;
-using Reactive.Bindings;
+using R3;
 using ScottPlot.WPF;
 using WpfUI.Core.Abstracts;
 using WpfUI.Core.Base;
@@ -15,7 +15,7 @@ namespace WpfUI.Features.Waveform;
 public sealed class WaveformViewModel : ViewModelBase
 {
     private readonly ITdmsService _tdmsService;
-    public AsyncReactiveCommand<DragEventArgs> DropToChartCommand { get; }
+    public ReactiveCommand<DragEventArgs> DropToChartCommand { get; } = new();
 
     public Func<TdmsChannelInfo, AxisType, IAsyncEnumerable<double>, Task>? PlotRequested { get; set; }
 
@@ -26,18 +26,17 @@ public sealed class WaveformViewModel : ViewModelBase
     {
         _tdmsService = tdmsService;
 
-        DropToChartCommand = new AsyncReactiveCommand<DragEventArgs>().WithSubscribe(async e =>
+        DropToChartCommand.SubscribeAwait(async (e, ct) => await OnDropToChartAsync(e, ct));
+    }
+
+    private async Task OnDropToChartAsync(DragEventArgs e, CancellationToken ct)
     {
         if (e.Data.GetData(typeof(List<TdmsChannelInfo>)) is not List<TdmsChannelInfo> channels) return;
-        //var data = e.Data.GetData(typeof(List<TdmsChannelInfo>)) as List<TdmsChannelInfo>;
-        //if (data is null) return;
 
-        // マウス位置から軸を判定
-        var point = e.GetPosition((IInputElement)e.Source);
-
-        //var actualWidth = ((FrameworkElement)e.Source).ActualWidth;
-        //var actualHeight = ((FrameworkElement)e.Source).ActualHeight;
-        var axis = DetermineAxis(point, ((FrameworkElement)e.Source).ActualWidth, ((FrameworkElement)e.Source).ActualHeight);
+        var axis = DetermineAxis(
+            e.GetPosition((IInputElement)e.Source),
+            ((FrameworkElement)e.Source).ActualWidth,
+            ((FrameworkElement)e.Source).ActualHeight);
 
         foreach (var ch in channels)
         {
@@ -50,13 +49,6 @@ public sealed class WaveformViewModel : ViewModelBase
                 await PlotRequested.Invoke(ch, axis, stream);
             }
         }
-
-
-        //foreach (var info in data)
-        //{
-        //    //await LoadAndPlotAsync(info, axisType);
-        //}
-    });
     }
 
     private async Task LoadAndPlotAsync(TdmsChannelInfo info, AxisType axis)

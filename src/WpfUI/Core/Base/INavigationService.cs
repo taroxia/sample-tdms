@@ -2,18 +2,18 @@
 //
 // ────────────────────────────────
 
-using Reactive.Bindings;
+using R3;
 
 namespace WpfUI.Core.Base;
 
 public interface INavigationService
 {
     IReadOnlyList<NavigationItem> Items { get; }
-    IReadOnlyReactiveProperty<object?> CurrentView { get; }
-    IReadOnlyReactiveProperty<object?> CurrentExplorerView { get; }
-    IReadOnlyReactiveProperty<NavigationItem?> SelectedItem { get; }
-    ReactivePropertySlim<bool> IsSidebarExpanded { get; }
-    ReactivePropertySlim<bool> IsExplorerExpanded { get; }
+    BindableReactiveProperty<object?> CurrentView { get; }
+    BindableReactiveProperty<object?> CurrentExplorerView { get; }
+    ReactiveProperty<NavigationItem?> SelectedItem { get; }
+    ReactiveProperty<bool> IsSidebarExpanded { get; }
+    ReactiveProperty<bool> IsExplorerExpanded { get; }
 
     void NavigateTo(NavigationItem item);
 }
