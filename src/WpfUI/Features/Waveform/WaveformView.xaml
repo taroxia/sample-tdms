@@ -39,7 +39,7 @@
       <Border Grid.Row="1" Grid.Column="1" Background="#22FFFF00" BorderBrush="#FFFF00" BorderThickness="1" x:Name="XTarget"/>
     </Grid>
 
-    <i:Interaction.Triggers>      
+    <i:Interaction.Triggers>
       <i:EventTrigger EventName="Drop">
         <i:InvokeCommandAction Command="{Binding DropToChartCommand}" PassEventArgsToCommand="True"/>
       </i:EventTrigger>

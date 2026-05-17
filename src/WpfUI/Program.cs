@@ -18,7 +18,7 @@ using WpfUI.Infrastructure.Persistence.Tdms;
 // [Package Info]
 // - Microsoft.Extensions.Hosting: DI, Logging, Configuration の統合管理.
 // - CommunityToolkit.Mvvm: MVVM パターンのボイラープレート削減.
-// - ReactiveProperty: 強力なストリーム操作と双方向のデータバインディング.
+// - R3.ReactiveProperty: 強力なストリーム操作と双方向のデータバインディング.
 // - ScottPlot: 
 // - Spectre.Console.Cli: 
 // ---------------------------------------------------------
@@ -36,6 +36,8 @@ public class Program
         // サービスの登録 (DI)
         builder.Services.AddSingleton<INavigationService, NavigationService>();
         builder.Services.AddSingleton<ITdmsService, TdmsService>();
+        //builder.Services.AddSingleton<IWaveformStateService, WaveformStateService>();
+        builder.Services.AddSingleton<WaveformStateService>();
 
         // --- Navigation Mapping (The Source of Truth) ---
         builder.Services.AddNavigation(nav => nav
