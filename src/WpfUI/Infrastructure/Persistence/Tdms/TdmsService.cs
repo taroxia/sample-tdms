@@ -3,42 +3,71 @@
 // ────────────────────────────────
 
 using System.Runtime.CompilerServices;
-using WpfUI.Core.Abstracts;
+using System.Xml.Linq;
+using OpenTK.Audio.OpenAL;
+using WpfUI.Core.Abstractions;
 using WpfUI.Infrastructure.Persistence.Tdms.Native;
 
 namespace WpfUI.Infrastructure.Persistence.Tdms;
 
 public sealed class TdmsService : ITdmsService
 {
-    // メタデータのみを高速に取得：再帰的にグループとチャンネルを走査
-    public async Task<IReadOnlyList<TdmsChannelInfo>> GetMetadataAsync(string filePath, CancellationToken ct = default)
+    public async Task<TdmsFileMetadata> GetMetadataAsync(string filepath, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+
         return await Task.Run(() =>
         {
-            using var file = new TdmsWrapper(filePath);
+            using var file = new TdmsWrapper(filepath);
             file.OpenFile();
-            var fInfos = file.GetPropertyInfos();
-            //string fName = file.GetFileName();
-            var results = new List<TdmsChannelInfo>();
 
-            foreach (var gHandle in file.GetChannelGroups())
+            IReadOnlyDictionary<string, object> ValueToObject(IEnumerable<KeyValuePair<string, TdmsValue>> rawProps)
             {
-                //var gInfos = file.GetPropertyInfos(gHandle);
-                // グループ名の取得
-                string gName = file.GetChannelGroupName(gHandle);
-                foreach (var cHandle in file.GetChannels(gHandle))
-                {
-                    //var cInfos = file.GetPropertyInfos(cHandle);
-
-                    string cName = file.GetChannelName(cHandle);
-                    //string cUnit = file.GetChannelUnit(cHandle);
-                    //string cDesc = file.GetChannelDescription(cHandle);
-
-                    ulong numValues = file.GetNumDataValues(cHandle);
-                    results.Add(new TdmsChannelInfo(filePath, gName, cName, numValues));
-                }
+                return rawProps
+                    .Select(kv => (
+                        kv.Key,
+                        Value: kv.Value switch
+                        {
+                            TdmsValue.UInt8(var v) => (object)v,
+                            TdmsValue.Int16(var v) => v,
+                            TdmsValue.Int32(var v) => v,
+                            TdmsValue.Float(var v) => v,
+                            TdmsValue.Double(var v) => v,
+                            TdmsValue.String(var v) => v,
+                            TdmsValue.Timestamp(var v) => v,
+                            _ => null
+                        }))
+                    .Where(t => t.Value is not null)
+                    .ToDictionary(t => t.Key, t => t.Value!);
             }
-            return (IReadOnlyList<TdmsChannelInfo>)results;
+
+            var rawGroupData = file.GetChannelGroups().Select(gHandle =>
+            {
+                // --- Channel Prop.
+                var rawChannels = file.GetChannels(gHandle).Select(cHandle => new TdmsChannelMetadata(
+                    Name: file.GetChannelName(cHandle),
+                    Properties: ValueToObject(file.GetProperties(cHandle)),
+                    SampleCount: file.GetNumDataValues(cHandle),
+                    DataType: (DataType)file.GetDataType(cHandle)
+                ));
+
+                // --- Group Prop.
+                return (
+                    GroupName: file.GetChannelGroupName(gHandle),
+                    Props: ValueToObject(file.GetProperties(gHandle)),
+                    Channels: rawChannels
+                );
+            }).ToList();
+
+            ct.ThrowIfCancellationRequested();
+
+            // --- File Prop.
+            return TdmsFileMetadata.Create(
+                filePath: filepath,
+                name: file.GetFileName(),
+                rawProperties: ValueToObject(file.GetProperties()),
+                rawGroups: rawGroupData
+            );
         }, ct);
     }
 
@@ -104,5 +133,33 @@ public sealed class TdmsService : ITdmsService
     {
         using var dataOwner = file.GetDataValues(channel, offset, count);
         dataOwner.Memory.Span.CopyTo(destination);
+#if false
+        using TdmsData tdmsData = file.ReadChannel(channel);
+
+        // 2. パターンマッチングで、ゼロアロケーションの Span<T> を安全に開示
+        switch (tdmsData)
+        {
+            case TdmsData.Double(var owner, var length):
+                ReadOnlySpan<double> doubleSpan = owner.Memory.Span[..length];
+                doubleSpan.CopyTo(destination);
+                // WPFのチャートや、統計計算ロジックにSpanのまま渡す（超高速）
+                //ProcessSignal(doubleSpan);
+                break;
+
+            case TdmsData.Timestamp(var owner, var length):
+                ReadOnlySpan<DateTime> timeSpan = owner.Memory.Span[..length];
+                //ProcessTimeline(timeSpan);
+                break;
+
+            case TdmsData.String(var values):
+                // 文字列配列の処理
+                //ProcessLabels(values);
+                break;
+
+            case TdmsData.Empty:
+                // データが0件の場合
+                break;
+        }
+#endif
     }
 }

@@ -7,7 +7,7 @@ using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Input;
 using R3;
-using WpfUI.Core.Abstracts;
+using WpfUI.Core.Abstractions;
 using WpfUI.Core.Base;
 
 namespace WpfUI.Features.Waveform.Explorer;
@@ -16,7 +16,7 @@ public sealed class WaveformExpViewModel : ViewModelBase
 {
     private readonly ITdmsService _tdmsService;
 
-    public ObservableCollection<TdmsChannelInfo> Channels { get; } = [];
+    public ObservableCollection<TdmsChannelMetadata> Channels { get; } = [];
     public BindableReactiveProperty<bool> IsEmpty { get; }
 
     public ReactiveCommand<DragEventArgs> DropFileCommand { get; } = new();
@@ -24,7 +24,7 @@ public sealed class WaveformExpViewModel : ViewModelBase
     public ReactiveCommand<System.Collections.IList> SelectionChangedCommand { get; } = new();
 
     // 選択されたチャネルを外部（WaveformView）へ通知するための ReactiveProperty
-    public ReactiveProperty<IEnumerable<TdmsChannelInfo>> SelectedChannels { get; } = new();
+    public ReactiveProperty<IEnumerable<TdmsChannelMetadata>> SelectedChannels { get; } = new();
 
     public WaveformExpViewModel(ITdmsService tdmsService)
     {
@@ -40,7 +40,7 @@ public sealed class WaveformExpViewModel : ViewModelBase
         IsEmpty =
             countChanged
                 .ToBindableReactiveProperty()
-                .AddTo(_disposables);
+                .AddTo(ref _disposables);
 
         DropFileCommand.SubscribeAwait(async (e, ct) => await OnDropFileCommand(e, ct));
         StartDragCommand.SubscribeAwait(async (e, ct) => await OnStartDragCommand(e, ct));
@@ -48,18 +48,25 @@ public sealed class WaveformExpViewModel : ViewModelBase
         //SelectionChangedCommand = new ReactiveCommand<System.Collections.IList>();
         SelectionChangedCommand.Subscribe(items =>
         {
-            SelectedChannels.Value = items.Cast<TdmsChannelInfo>().ToList();
+            SelectedChannels.Value = items.Cast<TdmsChannelMetadata>().ToList();
         });
     }
 
     private async Task OnDropFileCommand(DragEventArgs e, CancellationToken ct)
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files)
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files) return;
+
+        var tdmsFiles = files.Where(f => f.EndsWith(".tdms", StringComparison.OrdinalIgnoreCase));
+
+        foreach (var file in tdmsFiles)
         {
-            foreach (var file in files.Where(f => f.EndsWith(".tdms", StringComparison.OrdinalIgnoreCase)))
+            var metadata = await _tdmsService.GetMetadataAsync(file, ct);
+            var channelInfos = metadata.Groups.SelectMany(g => g.Channels);
+
+            // 3. UIスレッドへの負荷を激減させるため、まとめて追加 (拡張メソッド等の利用を推奨)
+            foreach (var info in channelInfos)
             {
-                var metadata = await _tdmsService.GetMetadataAsync(file);
-                foreach (var info in metadata) Channels.Add(info);
+                Channels.Add(info);
             }
         }
     }
@@ -72,7 +79,7 @@ public sealed class WaveformExpViewModel : ViewModelBase
 
             // 転送するデータを作成 (List<TdmsChannelInfo> としてパッケージ)
             var dataObject = new DataObject();
-            dataObject.SetData(typeof(List<TdmsChannelInfo>), SelectedChannels.Value.ToList());
+            dataObject.SetData(typeof(List<TdmsChannelMetadata>), SelectedChannels.Value.ToList());
 
             // D&D実行 (ブロック処理なので注意)
             DragDrop.DoDragDrop(target!, dataObject, DragDropEffects.Copy);
@@ -115,7 +122,7 @@ public class TdmsChannelNode(TdmsChannelInfo info)
                 ? DragDropEffects.Copy
                 : DragDropEffects.None;
             e.Handled = true;
-        }).AddTo(_disposables);
+        }).AddTo(ref _disposables);
         DropCommand = new ReactiveCommand<DragEventArgs>().WithSubscribe(async e =>
         {
             if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)

@@ -10,14 +10,14 @@ using R3;
 using ScottPlot;
 using ScottPlot.Plottables;
 using ScottPlot.WPF;
-using WpfUI.Core.Abstracts;
+using WpfUI.Core.Abstractions;
 using WpfUI.Core.Base;
 
 namespace WpfUI.Features.Waveform;
 
 public partial class WaveformView : ViewBase<WaveformViewModel>
 {
-    private readonly CompositeDisposable _disposables = new();
+    private DisposableBag _disposables = new();
     private WaveformViewModel? _viewModel;
 
     public WaveformView() : base()
@@ -75,14 +75,16 @@ public partial class WaveformView : ViewBase<WaveformViewModel>
                 //targetView.MainPlot.Refresh();
 
             })
-            .AddTo(_disposables);
+            .AddTo(ref _disposables);
         */
 
 
         MainPlot.Plot.RenderManager.AxisLimitsChanged += (_, _) =>
         {
-            // 現在の表示範囲をViewModelにバックアップ（画面が切り替わってもこれで安心）
-            vm.AxisChangedCommand.Execute(MainPlot.Plot.Axes.GetLimits());
+            if (vm.ActiveSignals.Count > 0)
+            {
+                vm.AxisChangedCommand.Execute(MainPlot.Plot.Axes.GetLimits());
+            }
         };
 
         //Observable.FromEvent<AxisLimits>(
@@ -92,7 +94,7 @@ public partial class WaveformView : ViewBase<WaveformViewModel>
         //    .Subscribe(this, static (args, state) =>
         //    {
         //    })
-        //    .AddTo(_disposables);
+        //    .AddTo(ref _disposables);
     }
     private void WaveformView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
@@ -102,7 +104,7 @@ public partial class WaveformView : ViewBase<WaveformViewModel>
         //MainPlot.Reset(vm.SharedPlot);
         vm.PlotRefreshRequested
             .Subscribe(_ => OnPlotRefresh(vm))
-            .AddTo(_disposables);
+            .AddTo(ref _disposables);
 
         if (!vm.CurrentAxisLimits.Value.Equals(AxisLimits.NoLimits))
         {
@@ -121,7 +123,10 @@ public partial class WaveformView : ViewBase<WaveformViewModel>
             MainPlot.Plot.Add.Plottable(signal);
         }
 
-        if (vm.CurrentAxisLimits.Value.Equals(AxisLimits.NoLimits))
+        if (vm.ActiveSignals.Count <= 0)
+        {
+        }
+        else if (vm.CurrentAxisLimits.Value.Equals(AxisLimits.NoLimits))
         {
             MainPlot.Plot.Axes.AutoScale();
         }
@@ -211,7 +216,7 @@ public partial class WaveformView : ViewBase<WaveformViewModel>
 
         MainPlot.Refresh();
     }
-    public async Task AddChannelToPlotAsync(TdmsChannelInfo info, AxisType axisType, IAsyncEnumerable<double> dataStream)
+    public async Task AddChannelToPlotAsync(TdmsChannelMetadata info, AxisType axisType, IAsyncEnumerable<double> dataStream)
     {
         double[] dataX = { 1, 2, 3, 4, 5 };
         double[] dataY = { 1, 4, 9, 16, 25 };

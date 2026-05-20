@@ -31,31 +31,31 @@ public partial class MainViewModel : ViewModelBase
         // Property.
         CurrentView = navigation.CurrentView
             .ToBindableReactiveProperty()
-            .AddTo(_disposables);
+            .AddTo(ref _disposables);
 
         CurrentExplorerView = navigation.CurrentExplorerView
             .ToBindableReactiveProperty()
-            .AddTo(_disposables);
+            .AddTo(ref _disposables);
 
         HasExplorer = navigation.CurrentExplorerView
                 .Select(view => view is not null)
                 .ToBindableReactiveProperty()
-                .AddTo(_disposables);
+                .AddTo(ref _disposables);
 
         // Command.
         NavigateCommand
             .Subscribe(x => navigation.NavigateTo(x))
-            .AddTo(_disposables);
+            .AddTo(ref _disposables);
 
         ToggleSidebarCommand
             .Subscribe(_ =>
             navigation.IsSidebarExpanded.Value = !navigation.IsSidebarExpanded.Value
-        ).AddTo(_disposables);
+        ).AddTo(ref _disposables);
 
 
         ToggleExplorerCommand
             .Subscribe(_ =>
             navigation.IsExplorerExpanded.Value = !navigation.IsExplorerExpanded.Value
-        ).AddTo(_disposables);
+        ).AddTo(ref _disposables);
     }
 }

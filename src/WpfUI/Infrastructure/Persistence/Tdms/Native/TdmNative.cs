@@ -125,7 +125,7 @@ internal static partial class TdmNative
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     public static partial ErrorCode OpenFileEx(string filePath,
       string fileType,
-      int readOnly,
+      [MarshalAs(UnmanagedType.Bool)] bool readOnly,
       out FileHandle file);
 
     //*****************************************************************************
@@ -196,7 +196,7 @@ internal static partial class TdmNative
     [LibraryImport(LibName, EntryPoint = "DDC_AppendDataValuesTimestampComponents")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
     public static partial ErrorCode AppendDataValuesTimestampComponents(ChannelHandle channel,
- uint[] year,
+         uint[] year,
          uint[] month,
          uint[] day,
          uint[] hour,
@@ -215,15 +215,15 @@ internal static partial class TdmNative
     [LibraryImport(LibName, EntryPoint = "DDC_ReplaceDataValuesTimestampComponents")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
     public static partial ErrorCode ReplaceDataValuesTimestampComponents(ChannelHandle channel,
-       nuint indexOfFirstValueToReplace,
-       uint[] year,
-         uint[] month,
-         uint[] day,
-         uint[] hour,
-         uint[] minute,
-         uint[] second,
-         double[] milliSecond,
-         nuint numValues);
+        nuint indexOfFirstValueToReplace,
+        uint[] year,
+        uint[] month,
+        uint[] day,
+        uint[] hour,
+        uint[] minute,
+        uint[] second,
+        double[] milliSecond,
+        nuint numValues);
 
     //*****************************************************************************
     /// <- Data Storage
@@ -279,14 +279,14 @@ internal static partial class TdmNative
     public static partial ErrorCode GetDataValuesTimestampComponents(ChannelHandle channel,
        nuint indexOfFirstValueToGet,
        nuint numValuesToGet,
-          [Out] uint[] year,
-         [Out] uint[] month,
-         [Out] uint[] day,
-         [Out] uint[] hour,
-         [Out] uint[] minute,
-         [Out] uint[] second,
-         [Out] double[] milliSecond,
-         [Out] uint[] weekDay);
+         Span<uint> year,
+         Span<uint> month,
+         Span<uint> day,
+         Span<uint> hour,
+         Span<uint> minute,
+         Span<uint> second,
+         Span<double> milliSecond,
+         Span<uint> weekDay);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetDataType")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
@@ -334,14 +334,14 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFileProperty", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFileProperty(FileHandle file,
+    public static partial ErrorCode GetProperty(FileHandle file,
        string property,
        IntPtr value,
        nuint valueSizeInBytes);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFilePropertyTimestampComponents", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFilePropertyTimestampComponents(FileHandle file,
+    public static partial ErrorCode GetPropertyTimestampComponents(FileHandle file,
        string property,
        out uint year,
        out uint month,
@@ -354,7 +354,7 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFileStringPropertyLength", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFileStringPropertyLength(FileHandle file,
+    public static partial ErrorCode GetStringPropertyLength(FileHandle file,
        string property,
        out uint length);
 
@@ -389,24 +389,24 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_FilePropertyExists", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode FilePropertyExists(FileHandle file,
+    public static partial ErrorCode PropertyExists(FileHandle file,
        string property,
-       out int exists);
+       [MarshalAs(UnmanagedType.Bool)] out bool exists);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetNumFileProperties")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetNumFileProperties(FileHandle file,
+    public static partial ErrorCode GetNumProperties(FileHandle file,
        out uint numProperties);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFilePropertyNames", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFilePropertyNames(FileHandle file,
+    public static partial ErrorCode GetPropertyNames(FileHandle file,
        Span<nint> propertyNames,
        nuint numPropertyNames);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFilePropertyType", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFilePropertyType(FileHandle file,
+    public static partial ErrorCode GetPropertyType(FileHandle file,
        string property,
        out DataType dataType);
 
@@ -447,14 +447,14 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupProperty", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupProperty(GroupHandle group,
+    public static partial ErrorCode GetProperty(GroupHandle group,
           string property,
           IntPtr value,
           nuint valueSizeInBytes);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupPropertyTimestampComponents", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupPropertyTimestampComponents(GroupHandle group,
+    public static partial ErrorCode GetPropertyTimestampComponents(GroupHandle group,
        string property,
        out uint year,
        out uint month,
@@ -467,7 +467,7 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupStringPropertyLength", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupStringPropertyLength(GroupHandle group,
+    public static partial ErrorCode GetStringPropertyLength(GroupHandle group,
        string property,
        out uint length);
 
@@ -502,24 +502,24 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_ChannelGroupPropertyExists", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode ChannelGroupPropertyExists(GroupHandle group,
+    public static partial ErrorCode PropertyExists(GroupHandle group,
           string property,
-          out int exists);
+          [MarshalAs(UnmanagedType.Bool)] out bool exists);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetNumChannelGroupProperties")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetNumChannelGroupProperties(GroupHandle group,
+    public static partial ErrorCode GetNumProperties(GroupHandle group,
        out uint numProperties);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupPropertyNames")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupPropertyNames(GroupHandle group,
+    public static partial ErrorCode GetPropertyNames(GroupHandle group,
           Span<nint> propertyNames,
           nuint numPropertyNames);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupPropertyType", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupPropertyType(GroupHandle group,
+    public static partial ErrorCode GetPropertyType(GroupHandle group,
           string property,
           out DataType dataType);
 
@@ -560,14 +560,14 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelProperty", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelProperty(ChannelHandle channel,
+    public static partial ErrorCode GetProperty(ChannelHandle channel,
             string property,
             IntPtr value,
             nuint valueSizeInBytes);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelPropertyTimestampComponents", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelPropertyTimestampComponents(ChannelHandle channel,
+    public static partial ErrorCode GetPropertyTimestampComponents(ChannelHandle channel,
        string property,
        out uint year,
        out uint month,
@@ -580,7 +580,7 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelStringPropertyLength", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelStringPropertyLength(ChannelHandle channel,
+    public static partial ErrorCode GetStringPropertyLength(ChannelHandle channel,
        string property,
        out uint length);
 
@@ -616,24 +616,24 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_ChannelPropertyExists", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode ChannelPropertyExists(ChannelHandle channel,
+    public static partial ErrorCode PropertyExists(ChannelHandle channel,
        string property,
-       out int exists);
+       [MarshalAs(UnmanagedType.Bool)] out bool exists);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetNumChannelProperties")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetNumChannelProperties(ChannelHandle channel,
+    public static partial ErrorCode GetNumProperties(ChannelHandle channel,
        out uint numProperties);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelPropertyNames")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelPropertyNames(ChannelHandle channel,
+    public static partial ErrorCode GetPropertyNames(ChannelHandle channel,
        Span<nint> propertyNames,
        nuint numPropertyNames);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelPropertyType", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelPropertyType(ChannelHandle channel,
+    public static partial ErrorCode GetPropertyType(ChannelHandle channel,
       string property,
       out DataType dataType);
 
@@ -783,28 +783,28 @@ internal static partial class TdmNative
     public static partial ErrorCode GetDataValues(ChannelHandle channel,
        nuint indexOfFirstValueToGet,
        nuint numValuesToGet,
-       [Out] byte[] values);
+       Span<byte> values);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetDataValuesInt16")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
     public static partial ErrorCode GetDataValues(ChannelHandle channel,
        nuint indexOfFirstValueToGet,
        nuint numValuesToGet,
-       [Out] short[] values);
+       Span<short> values);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetDataValuesInt32")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
     public static partial ErrorCode GetDataValues(ChannelHandle channel,
        nuint indexOfFirstValueToGet,
        nuint numValuesToGet,
-       [Out] int[] values);
+       Span<int> values);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetDataValuesFloat")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
     public static partial ErrorCode GetDataValues(ChannelHandle channel,
        nuint indexOfFirstValueToGet,
        nuint numValuesToGet,
-       [Out] float[] values);
+       Span<float> values);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetDataValuesDouble")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
@@ -894,37 +894,37 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFilePropertyUInt8", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFileProperty(FileHandle file,
+    public static partial ErrorCode GetProperty(FileHandle file,
        string property,
        out byte value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFilePropertyInt16", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFileProperty(FileHandle file,
+    public static partial ErrorCode GetProperty(FileHandle file,
        string property,
        out short value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFilePropertyInt32", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFileProperty(FileHandle file,
+    public static partial ErrorCode GetProperty(FileHandle file,
        string property,
        out int value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFilePropertyFloat", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFileProperty(FileHandle file,
+    public static partial ErrorCode GetProperty(FileHandle file,
        string property,
        out float value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFilePropertyDouble", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFileProperty(FileHandle file,
+    public static partial ErrorCode GetProperty(FileHandle file,
        string property,
        out double value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetFilePropertyString", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetFileProperty(FileHandle file,
+    public static partial ErrorCode GetProperty(FileHandle file,
        string property,
        Span<byte> value,
        nuint valueSize);
@@ -1003,37 +1003,37 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupPropertyUInt8", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupProperty(GroupHandle group,
+    public static partial ErrorCode GetProperty(GroupHandle group,
        string property,
        out byte value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupPropertyInt16", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupProperty(GroupHandle group,
+    public static partial ErrorCode GetProperty(GroupHandle group,
        string property,
        out short value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupPropertyInt32", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupProperty(GroupHandle group,
+    public static partial ErrorCode GetProperty(GroupHandle group,
        string property,
        out int value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupPropertyFloat", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupProperty(GroupHandle group,
+    public static partial ErrorCode GetProperty(GroupHandle group,
        string property,
        out float value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupPropertyDouble", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupProperty(GroupHandle group,
+    public static partial ErrorCode GetProperty(GroupHandle group,
        string property,
        out double value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelGroupPropertyString", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelGroupProperty(GroupHandle group,
+    public static partial ErrorCode GetProperty(GroupHandle group,
        string property,
        Span<byte> value,
        nuint valueSize);
@@ -1112,37 +1112,37 @@ internal static partial class TdmNative
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelPropertyUInt8", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelProperty(ChannelHandle channel,
+    public static partial ErrorCode GetProperty(ChannelHandle channel,
        string property,
        out byte value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelPropertyInt16", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelProperty(ChannelHandle channel,
+    public static partial ErrorCode GetProperty(ChannelHandle channel,
        string property,
        out short value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelPropertyInt32", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelProperty(ChannelHandle channel,
+    public static partial ErrorCode GetProperty(ChannelHandle channel,
        string property,
        out int value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelPropertyFloat", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelProperty(ChannelHandle channel,
+    public static partial ErrorCode GetProperty(ChannelHandle channel,
        string property,
        out float value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelPropertyDouble", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelProperty(ChannelHandle channel,
+    public static partial ErrorCode GetProperty(ChannelHandle channel,
        string property,
        out double value);
 
     [LibraryImport(LibName, EntryPoint = "DDC_GetChannelPropertyString", StringMarshalling = StringMarshalling.Utf8)]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvStdcall)])]
-    public static partial ErrorCode GetChannelProperty(ChannelHandle channel,
+    public static partial ErrorCode GetProperty(ChannelHandle channel,
        string property,
        Span<byte> value,
        nuint valueSize);

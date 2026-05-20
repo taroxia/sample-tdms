@@ -6,22 +6,24 @@ using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Windows;
+using System.Windows.Documents;
 using R3;
 using R3.Collections;
 using ScottPlot;
+using ScottPlot.Plottables;
 using ScottPlot.WPF;
-using WpfUI.Core.Abstracts;
+using WpfUI.Core.Abstractions;
 using WpfUI.Core.Base;
 
 namespace WpfUI.Features.Waveform;
 
 public sealed class WaveformViewModel : ViewModelBase
 {
-    private readonly WaveformStateService _service;
+    private readonly WaveformService _service;
     private readonly ITdmsService _tdmsService;
     public ReactiveCommand<DragEventArgs> DropToChartCommand { get; } = new();
 
-    public Func<TdmsChannelInfo, AxisType, IAsyncEnumerable<double>, Task>? PlotRequested { get; set; }
+    public Func<TdmsChannelMetadata, AxisType, IAsyncEnumerable<double>, Task>? PlotRequested { get; set; }
 
     public ReactiveProperty<AxisLimits> CurrentAxisLimits { get; }
     public ReactiveCommand<AxisLimits> AxisChangedCommand { get; } = new();
@@ -34,7 +36,7 @@ public sealed class WaveformViewModel : ViewModelBase
     public Observable<Unit> PlotRefreshRequested => _plotRefreshTrigger;
     private readonly Subject<Unit> _plotRefreshTrigger = new();
 
-    public WaveformViewModel(WaveformStateService service, ITdmsService tdmsService)
+    public WaveformViewModel(WaveformService service, ITdmsService tdmsService)
     {
         _tdmsService = tdmsService;
         _service = service;
@@ -42,27 +44,27 @@ public sealed class WaveformViewModel : ViewModelBase
         CurrentAxisLimits = service.CurrentAxisLimits;
 
         // Xs.
-        Xs = new BindableReactiveProperty<double[]?>(service.Xs.Value).AddTo(_disposables);
-        service.Xs.Skip(1).Subscribe(v => Xs.Value = v).AddTo(_disposables);
-        Xs.Skip(1).Subscribe(v => service.Xs.Value = v).AddTo(_disposables);
+        Xs = new BindableReactiveProperty<double[]?>(service.Xs.Value).AddTo(ref _disposables);
+        service.Xs.Skip(1).Subscribe(v => Xs.Value = v).AddTo(ref _disposables);
+        Xs.Skip(1).Subscribe(v => service.Xs.Value = v).AddTo(ref _disposables);
 
         LeftYs = new ReadOnlyObservableCollection<double[]>(service.LeftYs);
 
 
 
         DropToChartCommand.SubscribeAwait(async (e, ct) => await OnDropToChartAsync(e, ct))
-            .AddTo(_disposables);
+            .AddTo(ref _disposables);
 
         // from View.
         AxisChangedCommand.Subscribe(limits => CurrentAxisLimits.Value = limits)
-            .AddTo(_disposables);
+            .AddTo(ref _disposables);
 
         Xs.Subscribe(item =>
         {
             RebuildSignals(item, LeftYs.ToList()!);
             _plotRefreshTrigger.OnNext(Unit.Default);
         })
-        .AddTo(_disposables);
+        .AddTo(ref _disposables);
 
         service.OnLeftYsChanged
         .Where(e => e.Action == NotifyCollectionChangedAction.Add) // 追加時のみ
@@ -71,14 +73,14 @@ public sealed class WaveformViewModel : ViewModelBase
             RebuildSignals(Xs.Value!, e.NewItems);
             _plotRefreshTrigger.OnNext(Unit.Default);
         })
-        .AddTo(_disposables);
+        .AddTo(ref _disposables);
 
     }
 
 
     private async Task OnDropToChartAsync(DragEventArgs e, CancellationToken ct)
     {
-        if (e.Data.GetData(typeof(List<TdmsChannelInfo>)) is not List<TdmsChannelInfo> channels) return;
+        if (e.Data.GetData(typeof(List<TdmsChannelMetadata>)) is not List<TdmsChannelMetadata> channels) return;
 
         var axis = DetermineAxis(
             e.GetPosition((IInputElement)e.Source),
@@ -101,7 +103,18 @@ public sealed class WaveformViewModel : ViewModelBase
         foreach (var ch in channels)
         {
             // Serviceからストリームを取得
-            var stream = _tdmsService.ReadChannelDataStreamAsync(ch.FilePath, ch.GroupName, ch.ChannelName);
+            var stream = _tdmsService.ReadChannelDataStreamAsync(ch.FilePath, ch.GroupName, ch.Name);
+            double[] stream_arr = await stream.ToObservable().ToArrayAsync();
+
+            if (axis == AxisType.X)
+            {
+                Xs.Value = stream_arr;
+            }
+            else
+            {
+                _service.AppendLeftYs(stream_arr);
+            }
+
 
             // Viewに描画を依頼
             if (PlotRequested != null)
@@ -149,19 +162,23 @@ public sealed class WaveformViewModel : ViewModelBase
         RebuildSignals(xsValue, ys!);
     }
 
-    private void RebuildSignals(double[]? xs, List<double[]?>? ys)
+    private void RebuildSignals(double[]? xs, List<double[]?>? ysItems)
     {
         ActiveSignals.Clear();
-        if (xs is null || ys is null || ys.Count == 0 || xs.Length == 0)
+        if (xs is null || ysItems is null || ysItems.Count == 0 || xs.Length == 0)
             return;
 
         // Y軸マルチデータ対応。データの整合性チェックを行いつつSignalXYを生成
-        foreach (var yData in ys)
+        foreach (var ys in ysItems)
         {
-            if (yData is null || yData.Length != xs.Length) continue;
+            if (ys is null) { continue; }
+
+            int len = Math.Min(xs.Length, ys.Length);
+            var sliceXs = xs[..len];
+            var sliceYs = ys[..len];
 
             // ScottPlot 5でのSignalXY生成（メモリ効率が最も高い描画方式）
-            var dataSource = new ScottPlot.DataSources.SignalXYSourceDoubleArray(xs, yData);
+            var dataSource = new ScottPlot.DataSources.SignalXYSourceDoubleArray(sliceXs, sliceYs);
             var signal = new ScottPlot.Plottables.SignalXY(dataSource);
 
             // 商用向けモダンデザインに合わせた線の太さ調整など
@@ -172,13 +189,13 @@ public sealed class WaveformViewModel : ViewModelBase
     }
 
 
-    private async Task LoadAndPlotAsync(TdmsChannelInfo info, AxisType axis)
+    private async Task LoadAndPlotAsync(TdmsChannelMetadata info, AxisType axis)
     {
         // チャンクごとに読み込み、ScottPlotの DataLogger 等に流し込む
         // DataLoggerは ScottPlot 5 でリアルタイム更新に最適なプロットタイプです
         var logger = new List<double>();
 
-        await foreach (var value in _tdmsService.ReadChannelDataStreamAsync(info.FilePath, info.GroupName, info.ChannelName))
+        await foreach (var value in _tdmsService.ReadChannelDataStreamAsync(info.FilePath, info.GroupName, info.Name))
         {
             logger.Add(value);
 
@@ -191,7 +208,7 @@ public sealed class WaveformViewModel : ViewModelBase
     }
     public async Task HandleDropAsync(DragEventArgs e, WpfPlot plotControl)
     {
-        var data = e.Data.GetData(typeof(List<TdmsChannelInfo>)) as List<TdmsChannelInfo>;
+        var data = e.Data.GetData(typeof(List<TdmsChannelMetadata>)) as List<TdmsChannelMetadata>;
         if (data is null) return;
 
         // ドロップ座標から軸を判定
@@ -208,17 +225,17 @@ public sealed class WaveformViewModel : ViewModelBase
             {
                 case AxisType.RightY:
                     logger.Axes.YAxis = plotControl.Plot.Axes.Right;
-                    plotControl.Plot.Axes.Right.Label.Text = info.ChannelName;
+                    plotControl.Plot.Axes.Right.Label.Text = info.Name;
                     break;
                 case AxisType.LeftY:
                     logger.Axes.YAxis = plotControl.Plot.Axes.Left;
-                    plotControl.Plot.Axes.Left.Label.Text = info.ChannelName;
+                    plotControl.Plot.Axes.Left.Label.Text = info.Name;
                     break;
                     // X軸へのドロップは、既存プロットのXデータ差し替え等の特殊処理
             }
 
             // 非同期ストリーミング読み込みと描画更新
-            await foreach (var value in _tdmsService.ReadChannelDataStreamAsync(info.FilePath, info.GroupName, info.ChannelName))
+            await foreach (var value in _tdmsService.ReadChannelDataStreamAsync(info.FilePath, info.GroupName, info.Name))
             {
                 logger.Add(value);
 

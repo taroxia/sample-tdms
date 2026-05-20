@@ -9,8 +9,6 @@ namespace WpfUI.Features.Waveform.Explorer;
 
 public partial class WaveformExpView : ViewBase<WaveformExpViewModel>
 {
-    public ReadOnlyReactiveProperty<string> FileName { get; set; }
-
     public WaveformExpView() : base()
     {
         InitializeComponent();

@@ -9,7 +9,7 @@ namespace WpfUI.Core.Base;
 
 public abstract partial class ViewModelBase : ObservableObject, IDisposable
 {
-    public readonly CompositeDisposable _disposables = new();
+    protected DisposableBag _disposables = new();
 
     public virtual void Dispose()
     {

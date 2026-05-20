@@ -53,7 +53,7 @@ public sealed class NavigationService : BaseService, INavigationService
         SelectedItem
             .Pairwise()
             .Subscribe(OnNavigationChanged)
-            .AddTo(_disposables);
+            .AddTo(ref _disposables);
 
         if (Items.Any()) NavigateTo(Items.First());
     }

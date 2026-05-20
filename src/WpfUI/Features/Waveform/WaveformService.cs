@@ -14,6 +14,8 @@ using R3;
 using R3.Collections;
 using ScottPlot;
 
+using WpfUI.Core.Collections;
+
 namespace WpfUI.Features.Waveform;
 
 
@@ -24,7 +26,7 @@ public record PlotInfo(
     double[] Data
 );
 
-public sealed class WaveformStateService
+public sealed class WaveformService
 {
     public ReactiveProperty<AxisLimits> CurrentAxisLimits { get; } = new(AxisLimits.NoLimits);
     public ReactiveProperty<double[]?> Xs { get; } = new(null);
@@ -39,4 +41,7 @@ public sealed class WaveformStateService
             h => _leftYs.CollectionChanged -= h
         );
     public void AppendLeftYs(double[] newData) => _leftYs.Add(newData);
+
+
+
 }

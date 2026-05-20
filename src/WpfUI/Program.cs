@@ -5,7 +5,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Spectre.Console.Cli;
-using WpfUI.Core.Abstracts;
+using WpfUI.Core.Abstractions;
 using WpfUI.Core.Base;
 using WpfUI.Features.Settings;
 using WpfUI.Features.Shell;
@@ -36,14 +36,17 @@ public class Program
         // サービスの登録 (DI)
         builder.Services.AddSingleton<INavigationService, NavigationService>();
         builder.Services.AddSingleton<ITdmsService, TdmsService>();
-        //builder.Services.AddSingleton<IWaveformStateService, WaveformStateService>();
-        builder.Services.AddSingleton<WaveformStateService>();
+        builder.Services.AddSingleton<WaveformService>();
 
         // --- Navigation Mapping (The Source of Truth) ---
         builder.Services.AddNavigation(nav => nav
             .Add<WaveformView, WaveformViewModel,
-                 WaveformExpView, WaveformExpViewModel>("Wave", "Icon.Waveform")
-            .Add<SettingsView, SettingsViewModel>("Settings", "Icon.Settings")
+                 WaveformExpView, WaveformExpViewModel>
+                ("Wave", "Icon.Waveform")
+
+            // --- 
+            .Add<SettingsView, SettingsViewModel>
+                ("Settings", "Icon.Settings")
         );
 
         //ConfigureServices(builder.Services);
