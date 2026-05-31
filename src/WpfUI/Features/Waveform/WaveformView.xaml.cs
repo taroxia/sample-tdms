@@ -3,29 +3,36 @@
 // ────────────────────────────────
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.Extensions.Logging;
+using System.Windows.Media;
 using R3;
 using ScottPlot;
-using ScottPlot.Plottables;
 using ScottPlot.WPF;
+
 using WpfUI.Core.Abstractions;
 using WpfUI.Core.Base;
+using WpfUI.Core.Dmain.Models;
+using WpfUI.Infrastructure.Persistence.Tdms;
 
 namespace WpfUI.Features.Waveform;
 
 public partial class WaveformView : ViewBase<WaveformViewModel>
 {
-    private DisposableBag _disposables = new();
     private WaveformViewModel? _viewModel;
+    private DisposableBag _disposables = new();
+    private bool _isUpdatingLimits = false;
+    private bool _isUpdatingZone = false;
 
-    public WaveformView() : base()
+    public WaveformView()
     {
         InitializeComponent();
 
-        DataContextChanged += WaveformView_DataContextChanged;
-        Unloaded += (s, e) => _disposables.Clear();
+        // ItemsControlのジェネレートタイミングに合わせたイベントハンドリング
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
     protected override void OnViewModelAttached(WaveformViewModel? vm)
     {
@@ -33,290 +40,234 @@ public partial class WaveformView : ViewBase<WaveformViewModel>
         if (vm is null) return;
 
         _viewModel = vm;
-
-        //MainPlot.Reset(vm.SharedPlot);
-
-        /*
-        Observable.CombineLatest(vm.Xs, vm.Ys, (x, y) => (x, y))
-            .Subscribe(this, static (data, state) =>
-            {
-                //var targetView = state;
-                //targetView.MainPlot?.Plot.Clear();
-
-                //var (x, y) = data;
-                //if (x is not null && y is not null)
-                //{
-                //}
-                //else
-                //{
-                //    targetView.MainPlot.Plot.Axes.SetLimits(0, 100, -10, 10);
-                //}
-                //if (_isInitialLoad)
-                //{
-                //    if (vm.CurrentLimits.Value != AxisLimits.NoLimits)
-                //    {
-                //        targetView.MainPlot.Plot.Axes.SetLimits(vm.CurrentLimits.Value);
-
-                //        var signal = targetView.MainPlot.Plot.Add.SignalXY(x, y);
-                //        signal.Color = Color.FromHex("#00A2E8");
-                //        signal.LineWidth = 1.5f;
-
-                //        // ViewModel に保存されていた前回の表示範囲を復元
-                //        var (min, max) = viewModel.XLimits.Value;
-                //        targetView.MainPlot.Plot.Axes.SetLimitsX(min, max);
-
-                //    }
-                //    else
-                //    {
-                //        targetView.MainPlot.Plot.Axes.Autoscale(); // 過去データがなければ全体表示
-                //    }
-                //    _isInitialLoad = false;
-                //}
-                //targetView.MainPlot.Refresh();
-
-            })
-            .AddTo(ref _disposables);
-        */
-
-
-        MainPlot.Plot.RenderManager.AxisLimitsChanged += (_, _) =>
-        {
-            if (vm.ActiveSignals.Count > 0)
-            {
-                vm.AxisChangedCommand.Execute(MainPlot.Plot.Axes.GetLimits());
-            }
-        };
-
-        //Observable.FromEvent<AxisLimits>(
-        //        h => MainPlot.Plot.RenderManager.AxisLimitsChanged += h,
-        //        h => MainPlot.Plot.RenderManager.AxisLimitsChanged -= h)
-        //    .ThrottleFirst(TimeSpan.FromMilliseconds(100)) // 負荷軽減のための間引き
-        //    .Subscribe(this, static (args, state) =>
-        //    {
-        //    })
-        //    .AddTo(ref _disposables);
     }
-    private void WaveformView_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        if (e.NewValue is not WaveformViewModel vm) { return; }
-
-        _viewModel = vm;
-        //MainPlot.Reset(vm.SharedPlot);
-        vm.PlotRefreshRequested
-            .Subscribe(_ => OnPlotRefresh(vm))
-            .AddTo(ref _disposables);
-
-        if (!vm.CurrentAxisLimits.Value.Equals(AxisLimits.NoLimits))
-        {
-            MainPlot.Plot.Axes.SetLimits(vm.CurrentAxisLimits.Value);
-        }
-
-        OnPlotRefresh(vm);
-        //MainPlot.Refresh();
-    }
-    public void OnPlotRefresh(WaveformViewModel vm)
-    {
-        MainPlot.Plot.Clear();
-
-        foreach (var signal in vm.ActiveSignals)
-        {
-            MainPlot.Plot.Add.Plottable(signal);
-        }
-
-        if (vm.ActiveSignals.Count <= 0)
-        {
-        }
-        else if (vm.CurrentAxisLimits.Value.Equals(AxisLimits.NoLimits))
-        {
-            MainPlot.Plot.Axes.AutoScale();
-        }
-        else
-        {
-            MainPlot.Plot.Axes.SetLimits(vm.CurrentAxisLimits.Value);
-        }
-        MainPlot.Refresh();
-    }
-
-
-    public void OnPlotRendered(object sender, EventArgs e)
-    {
-    }
-
-
-
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        //if (DataContext is WaveformViewModel vm)
-        //{
-        //    vm.PlotRequested = async (info, axis, stream) =>
-        //        await AddChannelToPlotAsync(info, axis, stream);
-        //}
+        if (_viewModel == null) return;
+
+        // 再レンダリング要求ストリームの購読
+        _viewModel.RequestRender
+            .Subscribe(_ => Dispatcher.Invoke(RenderAllPlots))
+            .AddTo(ref _disposables);
+
+        // 各段の初期セットアップ（UIツリーを走査）
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            SetupDragDropHandlers();
+            RenderAllPlots();
+            SyncAxisLimits();
+        }), System.Windows.Threading.DispatcherPriority.Background);
     }
 
-    /*
-    private void UpdatePlot(WaveformViewModel vm)
+    private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        // 描画クリア
-        MainPlot.Plot.Clear();
+        _disposables.Dispose();
+    }
 
-        var xs = vm.Xs.Value;
-        var ysList = vm.Ys.Value;
+    private void SetupDragDropHandlers()
+    {
+        // ItemsControl 内の全要素を走査してドロップイベントを登録
+        var itemsControl = LogicalTreeHelper.GetChildren(this).OfType<Grid>().FirstOrDefault()
+            ?.Children.OfType<ItemsControl>().FirstOrDefault();
 
-        if (xs == null || ysList == null || ysList?.Count == 0)
+        if (itemsControl == null || _isUpdatingZone) return;
+        _isUpdatingZone = true;
+
+        for (int i = 0; i < itemsControl.Items.Count; i++)
         {
-            MainPlot.Refresh();
-            return;
+            var container = itemsControl.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+            if (container == null) continue;
+
+            var model = container.DataContext as PlotLayerModel;
+            if (model == null) continue;
+
+            var leftZone = FindVisualChild<Border>(container, "LeftDropZone");
+            var rightZone = FindVisualChild<Border>(container, "RightDropZone");
+            var xZone = FindVisualChild<Border>(container, "XDropZone");
+
+            if (leftZone != null) SetupZone(leftZone, model, AxisPosition.Left);
+            if (rightZone != null) SetupZone(rightZone, model, AxisPosition.Right);
+            if (xZone != null) SetupZone(xZone, model, AxisPosition.X);
         }
-
-        // 複数ラインのプロット
-        foreach (var ys in ysList)
-        {
-            if (ys == null || xs.Length != ys.Length) continue;
-
-            // ScottPlot 5 の SignalXY は大容量データの描画に最適化されています
-            var sig = MainPlot.Plot.Add.SignalXY(xs, ys);
-            sig.MarkerSize = 0; // 高速化のためマーカーは非表示
-            sig.LineWidth = 1.5f;
-        }
-
-        if (vm.CurrentAxisLimits.Value.Equals(AxisLimits.NoLimits))
-        {
-            MainPlot.Plot.Axes.AutoScale();
-            //MainPlot.Plot.Axes.SetLimits(vm.CurrentAxisLimits.Value);
-        }
-        MainPlot.Refresh();
-    }
-    */
-
-
-
-
-    //protected override void OnViewModelAttached(WaveformViewModel? viewModel)
-    //{
-    //    if (viewModel is null) return;
-    //    SetupPlotLayout();
-    //}
-    private void SetupPlotLayout()
-    {
-        // グラスフィルデザインに合わせたチャートの外観設定
-        var plot = MainPlot.Plot;
-        MainPlot.Plot.FigureBackground.Color = Colors.Transparent; // 背景透過
-        System.Drawing.Color drawingColor = System.Drawing.Color.FromArgb(20, 255, 255, 255);
-        MainPlot.Plot.DataBackground.Color = ScottPlot.Color.FromColor(drawingColor);
-
-        // グリッドと軸のネオンカラー設定
-        MainPlot.Plot.Axes.Color(Colors.Gray);
-        MainPlot.Plot.Grid.MajorLineColor = Colors.Gray.WithAlpha(0.2);
-
-        // 凡例をモダンな位置に配置
-        MainPlot.Plot.ShowLegend(Alignment.UpperRight);
-        MainPlot.Plot.Legend.BackgroundColor = Colors.Black.WithAlpha(0.5);
-        MainPlot.Plot.Legend.FontColor = Colors.White;
-
-        MainPlot.Refresh();
-    }
-    public async Task AddChannelToPlotAsync(TdmsChannelMetadata info, AxisType axisType, IAsyncEnumerable<double> dataStream)
-    {
-        double[] dataX = { 1, 2, 3, 4, 5 };
-        double[] dataY = { 1, 4, 9, 16, 25 };
-        double[] data = axisType == AxisType.X ? dataX : dataY;
-
-        //var signal = MainPlot.Plot.GetPlottables<SignalXY>() ?? MainPlot.Plot.Add.SignalXY(null, null);
-        //signal.Axes.XAxis = axisType == AxisType.X ? MainPlot.Plot.Axes.Bottom : MainPlot.Plot.Axes.Left;
-
-
-        //newPlot.Plot.Add.Scatter(dataX, dataY);
-
-        //signal.Title("TDMS High-Speed Analysis");
-        MainPlot.Plot.Axes.AutoScale();
-        MainPlot.Refresh();
+        _isUpdatingZone = false;
     }
 
-    /*
-    public async Task AddChannelToPlotAsync(TdmsChannelInfo info, AxisType axisType, IAsyncEnumerable<double> dataStream)
+    private void SetupZone(Border zone, PlotLayerModel layer, AxisPosition pos)
     {
-        var plot = MainPlot.Plot;
 
-        // DataLogger (ScottPlot 5 で動的更新に最も最適化されたプロット型)
-        var logger = MainPlot.Plot.Add.DataLogger();
-        logger.LegendText = info.ChannelName;
-
-        double[] result = await dataStream.ToObservable().ToArrayAsync();
-        var signal = MainPlot.Plot.Add.Signal(result);
-
-        // 軸のアサイン
-        ConfigureAxis(signal, axisType, info.ChannelName);
-
-        // ストリーミング描画
-        int count = 0;
-        await foreach (var value in dataStream)
+        zone.DragOver += (s, e) =>
         {
-            logger.Add(count++, value);
+            e.Effects = e.Data.GetDataPresent("ArcticSlate.TdmsChannel") ? DragDropEffects.Copy : DragDropEffects.None;
+            zone.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(50, 0, 173, 181)); // Highlight Cyan
+            e.Handled = true;
+        };
 
-            // 5000点ごとにリフレッシュすることで描画負荷を軽減しつつリアルタイム性を確保
-            if (count % 5000 == 0)
+        zone.DragLeave += (s, e) =>
+        {
+            zone.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x15, 0x1C, 0x25));
+        };
+
+        zone.Drop += async (s, e) =>
+        {
+            zone.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x15, 0x1C, 0x25));
+            if (e.Data.GetData("ArcticSlate.TdmsChannel") is TdmsChannelMetadata channel)
             {
-                MainPlot.Refresh();
-                await Task.Yield(); // UIの入力を妨げない
+                if (_viewModel != null)
+                {
+                    await _viewModel.HandleChannelDropAsync(layer, channel, pos);
+                    SetupDragDropHandlers(); // 再構築
+                }
+            }
+        };
+
+    }
+
+    private async void RenderAllPlots()
+    {
+        if (_viewModel == null) return;
+
+        var itemsControl = FindVisualChild<ItemsControl>(this, "");
+        if (itemsControl == null) return;
+
+        for (int i = 0; i < itemsControl.Items.Count; i++)
+        {
+            var container = itemsControl.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+            if (container == null) continue;
+
+            var layer = container.DataContext as PlotLayerModel;
+            var wpfPlot = FindVisualChild<WpfPlot>(container, "PlotControl");
+            if (layer == null || wpfPlot == null) continue;
+
+            // ScottPlot 5 公式推奨初期化パターン
+#if false
+            Plot plot = new();
+            plot.FigureBackground.Color = ScottPlot.Color.FromHex("#262F3D");
+            plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#374151");
+#else
+            wpfPlot.Plot.Clear();
+            wpfPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#262F3D");
+            wpfPlot.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#374151");
+
+#endif
+
+            // X軸データの抽出
+            var xAssignment = layer.Assignments.FirstOrDefault(a => a.Position == AxisPosition.X);
+            var isTimestamp = xAssignment?.Channel.DataType == DataType.Timestamp;
+            double[] xData = Array.Empty<double>();
+            if (xAssignment != null)
+            {
+                xData = await _viewModel.LoadChannelDataAsync(xAssignment.Channel);
+            }
+
+            // Y軸データの描画
+            foreach (var assign in layer.Assignments.Where(a => a.Position != AxisPosition.X))
+            {
+                double[] yData = await _viewModel.LoadChannelDataAsync(assign.Channel);
+                if (yData.Length == 0) continue;
+
+                // Xデータが未アサインまたはサイズ不一致の場合はインデックス生成
+                double[] finalX = (xData.Length == yData.Length) ? xData : GenerateIndexAxis(yData.Length);
+
+                // ScottPlot 5 厳格API呼出
+                var signal = wpfPlot.Plot.Add.SignalXY(finalX, yData);
+                signal.MarkerStyle = MarkerStyle.None;
+
+                if (assign.Position == AxisPosition.Left)
+                {
+                    var customAxis = wpfPlot.Plot.Axes.AddLeftAxis();
+                    customAxis.LabelText = assign.Channel.Name;
+                    customAxis.LabelFontColor = ScottPlot.Colors.Cyan;
+                    signal.Axes.YAxis = customAxis;
+                }
+                else if (assign.Position == AxisPosition.Right)
+                {
+                    var customAxis = wpfPlot.Plot.Axes.AddRightAxis();
+                    customAxis.LabelText = assign.Channel.Name;
+                    customAxis.LabelFontColor = ScottPlot.Colors.Magenta;
+                    signal.Axes.YAxis = customAxis;
+                }
+            }
+            if (isTimestamp)
+            {
+                wpfPlot.Plot.Axes.DateTimeTicksBottom();
+            }
+            else
+            {
+                //wpfPlot.Plot.Axes.LinearTicksBottom();
+            }
+
+            wpfPlot.Refresh();
+        }
+
+        SyncAxisLimits();
+    }
+
+    private double[] GenerateIndexAxis(int length)
+    {
+        double[] axis = new double[length];
+        for (int i = 0; i < length; i++) axis[i] = i;
+        return axis;
+    }
+
+    private void SyncAxisLimits()
+    {
+        if (_viewModel == null) return;
+
+        var itemsControl = FindVisualChild<ItemsControl>(this, "");
+        if (itemsControl == null) return;
+
+        for (int i = 0; i < itemsControl.Items.Count; i++)
+        {
+            var container = itemsControl.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+            var wpfPlot = FindVisualChild<WpfPlot>(container, "PlotControl");
+            if (wpfPlot == null) continue;
+
+            // 各Plotの軸操作のリアルタイム検知 (ScottPlot 5 仕様)
+            wpfPlot.UserInputProcessor.IsEnabled = true;
+
+            // マウス操作などで制限が変わった場合の同調イベント
+            wpfPlot.SizeChanged += (s, e) => PropagateLimits(wpfPlot);
+        }
+    }
+
+    private void PropagateLimits(WpfPlot sourcePlot)
+    {
+        if (_isUpdatingLimits || _viewModel == null) return;
+        _isUpdatingLimits = true;
+
+        var currentLimits = sourcePlot.Plot.Axes.GetLimits();
+        _viewModel.SharedAxisLimits.Value = currentLimits;
+
+        var itemsControl = FindVisualChild<ItemsControl>(this, "");
+        if (itemsControl != null)
+        {
+            for (int i = 0; i < itemsControl.Items.Count; i++)
+            {
+                var container = itemsControl.ItemContainerGenerator.ContainerFromIndex(i) as FrameworkElement;
+                var wpfPlot = FindVisualChild<WpfPlot>(container, "PlotControl");
+                if (wpfPlot != null && wpfPlot != sourcePlot)
+                {
+                    wpfPlot.Plot.Axes.SetLimitsX(currentLimits.Left, currentLimits.Right);
+                    wpfPlot.Refresh();
+                }
             }
         }
+        _isUpdatingLimits = false;
+    }
 
-        // 最後に最適化して全表示
-        MainPlot.Plot.Axes.AutoScale();
-        MainPlot.Refresh();
-    }
-    */
-    private void ConfigureAxis(Signal signal, AxisType axisType, string label)
+    // WPFビジュアルツリー検索ユーティリティ
+    private T? FindVisualChild<T>(DependencyObject obj, string name) where T : DependencyObject
     {
-        var plot = MainPlot.Plot;
-        switch (axisType)
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
         {
-            case AxisType.LeftY:
-            {
-                var axis = MainPlot.Plot.Axes.Left;
-                axis.Label.Text = label;
-                axis.Label.ForeColor = ScottPlot.Colors.Cyan;
-                signal.Axes.YAxis = axis;
-            }
-            break;
-            case AxisType.RightY:
-            {
-                var axis = MainPlot.Plot.Axes.Right;
-                axis.IsVisible = true;
-                axis.Label.Text = label;
-                axis.Label.ForeColor = ScottPlot.Colors.Magenta;
-                signal.Axes.YAxis = axis;
-            }
-            break;
-            case AxisType.X:
-                signal.Axes.XAxis = MainPlot.Plot.Axes.Bottom;
-                // 特殊ケース：X軸基準データの入れ替え
-                break;
+            var child = VisualTreeHelper.GetChild(obj, i);
+            if (child is T t && (string.IsNullOrEmpty(name) || (child is FrameworkElement fe && fe.Name == name)))
+                return t;
+
+            var childOfChild = FindVisualChild<T>(child, name);
+            if (childOfChild != null) return childOfChild;
         }
+        return null;
     }
-    /*
-    private void ConfigureAxis(ScottPlot.Plottables.DataLogger logger, AxisType axisType, string label)
-    {
-        var plot = MainPlot.Plot;
-        switch (axisType)
-        {
-            case AxisType.LeftY:
-                logger.Axes.YAxis = MainPlot.Plot.Axes.Left;
-                MainPlot.Plot.Axes.Left.Label.Text = label;
-                MainPlot.Plot.Axes.Left.Label.ForeColor = ScottPlot.Colors.Cyan;
-                break;
-            case AxisType.RightY:
-                // 右軸を有効化
-                MainPlot.Plot.Axes.Right.IsVisible = true;
-                logger.Axes.YAxis = MainPlot.Plot.Axes.Right;
-                MainPlot.Plot.Axes.Right.Label.Text = label;
-                MainPlot.Plot.Axes.Right.Label.ForeColor = ScottPlot.Colors.Magenta;
-                break;
-            case AxisType.X:
-                // 特殊ケース：X軸基準データの入れ替え
-                break;
-        }
-    }
-    */
 }

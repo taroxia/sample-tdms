@@ -11,39 +11,48 @@ using System.Threading.Channels;
 using System.Windows.Documents;
 using OpenTK.Audio.OpenAL;
 using ScottPlot.TickGenerators.TimeUnits;
+
+using WpfUI.Core.Dmain.Models;
 using WpfUI.Infrastructure.Persistence.Tdms.Native;
 
 namespace WpfUI.Infrastructure.Persistence.Tdms;
 
-public abstract record TdmsValue
-{
-    private TdmsValue() { }
+//public abstract record TdmsValue
+//{
+//    private TdmsValue() { }
 
-    public record UInt8(byte Value) : TdmsValue;
-    public record Int16(short Value) : TdmsValue;
-    public record Int32(int Value) : TdmsValue;
-    public record Float(float Value) : TdmsValue;
-    public record Double(double Value) : TdmsValue;
-    public record String(string Value) : TdmsValue;
-    public record Timestamp(DateTime? Value) : TdmsValue;
-    public sealed record Empty : TdmsValue { }
-}
+//    public record UInt8(byte Value) : TdmsValue;
+//    public record Int16(short Value) : TdmsValue;
+//    public record Int32(int Value) : TdmsValue;
+//    public record Float(float Value) : TdmsValue;
+//    public record Double(double Value) : TdmsValue;
+//    public record String(string Value) : TdmsValue;
+//    public record Timestamp(DateTime? Value) : TdmsValue;
+//    public sealed record Empty : TdmsValue { }
+//}
 
-public abstract record TdmsData : IDisposable
-{
-    private TdmsData() { }
+//public abstract record TdmsData : IDisposable
+//{
+//    private TdmsData() { }
 
-    public abstract void Dispose();
+//    public abstract void Dispose();
 
-    public sealed record UInt8(IMemoryOwner<byte> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
-    public sealed record Int16(IMemoryOwner<short> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
-    public sealed record Int32(IMemoryOwner<int> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
-    public sealed record Float(IMemoryOwner<float> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
-    public sealed record Double(IMemoryOwner<double> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
-    public sealed record String(string[] Values) : TdmsData { public override void Dispose() { } }  // no dispose.
-    public sealed record Timestamp(IMemoryOwner<DateTime> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
-    public sealed record Empty : TdmsData { public override void Dispose() { } }    // no dispose.
-}
+//    public sealed record UInt8(IMemoryOwner<byte> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
+//    public sealed record Int16(IMemoryOwner<short> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
+//    public sealed record Int32(IMemoryOwner<int> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
+//    public sealed record Float(IMemoryOwner<float> Owner, int Length) : TdmsData { public override void Dispose() => Owner.Dispose(); }
+//    public sealed record Double(IMemoryOwner<double> Owner, int Length) : TdmsData
+//    {
+//        public override void Dispose() => Owner.Dispose();
+//    }
+//    public sealed record String(string[] Values) : TdmsData { public override void Dispose() { } }  // no dispose.
+//    public sealed record Timestamp(IMemoryOwner<DateTime> Owner, int Length) : TdmsData
+//    {
+//        public override void Dispose() => Owner.Dispose();
+//    }
+
+//    public sealed record Empty : TdmsData { public override void Dispose() { } }    // no dispose.
+//}
 
 public sealed class TdmsException(int errorCode, string? message)
     : Exception($"TDM Error {errorCode}: {message}")
@@ -359,17 +368,18 @@ internal sealed class TdmsWrapper(string path) : IDisposable
 
         // Use ArrayPool to avoid heavy allocations for large metadata strings
         byte[]? rented = null;
-        Span<byte> buffer = length <= StackAllocThreshold
-            ? stackalloc byte[(int)length]
-            : (rented = ArrayPool<byte>.Shared.Rent((int)length));
+        var bufSize = (int)length + 1;
+        Span<byte> buffer = bufSize <= StackAllocThreshold
+            ? stackalloc byte[bufSize]
+            : (rented = ArrayPool<byte>.Shared.Rent(bufSize));
 
         try
         {
             var errForProp = handle switch
             {
-                FileHandle f => TdmNative.GetProperty(f, property, buffer, length),
-                GroupHandle g => TdmNative.GetProperty(g, property, buffer, length),
-                ChannelHandle c => TdmNative.GetProperty(c, property, buffer, length),
+                FileHandle f => TdmNative.GetProperty(f, property, buffer, (nuint)buffer.Length),
+                GroupHandle g => TdmNative.GetProperty(g, property, buffer, (nuint)buffer.Length),
+                ChannelHandle c => TdmNative.GetProperty(c, property, buffer, (nuint)buffer.Length),
                 _ => throw new NotSupportedException($"Unsupported handle type: {handle.GetType().Name}")
             };
             TdmsGuard.ThrowIfError(errForProp);

@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using OpenTK.Audio.OpenAL;
 using WpfUI.Core.Abstractions;
+using WpfUI.Core.Collections;
+using WpfUI.Core.Dmain.Models;
 using WpfUI.Infrastructure.Persistence.Tdms.Native;
 
 namespace WpfUI.Infrastructure.Persistence.Tdms;
@@ -18,8 +20,8 @@ public sealed class TdmsService : ITdmsService
 
         return await Task.Run(() =>
         {
-            using var file = new TdmsWrapper(filepath);
-            file.OpenFile();
+            using var wrapper = new TdmsWrapper(filepath);
+            wrapper.OpenFile();
 
             IReadOnlyDictionary<string, object> ValueToObject(IEnumerable<KeyValuePair<string, TdmsValue>> rawProps)
             {
@@ -41,20 +43,20 @@ public sealed class TdmsService : ITdmsService
                     .ToDictionary(t => t.Key, t => t.Value!);
             }
 
-            var rawGroupData = file.GetChannelGroups().Select(gHandle =>
+            var rawGroupData = wrapper.GetChannelGroups().Select(gHandle =>
             {
                 // --- Channel Prop.
-                var rawChannels = file.GetChannels(gHandle).Select(cHandle => new TdmsChannelMetadata(
-                    Name: file.GetChannelName(cHandle),
-                    Properties: ValueToObject(file.GetProperties(cHandle)),
-                    SampleCount: file.GetNumDataValues(cHandle),
-                    DataType: (DataType)file.GetDataType(cHandle)
+                var rawChannels = wrapper.GetChannels(gHandle).Select(cHandle => new TdmsChannelMetadata(
+                    Name: wrapper.GetChannelName(cHandle),
+                    Properties: ValueToObject(wrapper.GetProperties(cHandle)),
+                    SampleCount: wrapper.GetNumDataValues(cHandle),
+                    DataType: (DataType)wrapper.GetDataType(cHandle)
                 ));
 
                 // --- Group Prop.
                 return (
-                    GroupName: file.GetChannelGroupName(gHandle),
-                    Props: ValueToObject(file.GetProperties(gHandle)),
+                    GroupName: wrapper.GetChannelGroupName(gHandle),
+                    Props: ValueToObject(wrapper.GetProperties(gHandle)),
                     Channels: rawChannels
                 );
             }).ToList();
@@ -64,8 +66,8 @@ public sealed class TdmsService : ITdmsService
             // --- File Prop.
             return TdmsFileMetadata.Create(
                 filePath: filepath,
-                name: file.GetFileName(),
-                rawProperties: ValueToObject(file.GetProperties()),
+                name: wrapper.GetFileName(),
+                rawProperties: ValueToObject(wrapper.GetProperties()),
                 rawGroups: rawGroupData
             );
         }, ct);
@@ -90,6 +92,30 @@ public sealed class TdmsService : ITdmsService
         }, ct);
     }
     */
+
+    public async ValueTask<TdmsData> ReadChannelDataStreamAsync(
+        TdmsCacheKey key,
+        CancellationToken cancellationToken = default)
+    {
+        // 大容量ファイルのI/Oを伴うため、WPFのUIスレッドをブロックしないよう、
+        // ThreadPool（Task.Run）へ明示的に逃がして処理します。
+        return await Task.Run(() =>
+        {
+            // 非同期のキャンセル要求をチェック
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // TdmsWrapper の生成とデータ読み出し
+            // ※ TdmsWrapper が IDisposable なので、読み込み完了後に確実に解放します。
+            using var wrapper = new TdmsWrapper(key.FilePath);
+            wrapper.OpenFile();
+            var ch = wrapper.GetChannelByName(key.GroupName, key.ChannelName);
+
+            // ネイティブ DLL (nilibdcc.dll) を介して、
+            // IMemoryOwner に裏打ちされた型安全な構造体をファクトリします。
+            return wrapper.ReadChannel(ch);
+
+        }, cancellationToken).ConfigureAwait(false);
+    }
 
     public async IAsyncEnumerable<double> ReadChannelDataStreamAsync(
         string filePath,
@@ -133,9 +159,9 @@ public sealed class TdmsService : ITdmsService
     {
         using var dataOwner = file.GetDataValues(channel, offset, count);
         dataOwner.Memory.Span.CopyTo(destination);
+
 #if false
         using TdmsData tdmsData = file.ReadChannel(channel);
-
         // 2. パターンマッチングで、ゼロアロケーションの Span<T> を安全に開示
         switch (tdmsData)
         {

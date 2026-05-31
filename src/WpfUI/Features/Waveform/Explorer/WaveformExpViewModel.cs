@@ -3,158 +3,313 @@
 // ────────────────────────────────
 
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using R3;
+
 using WpfUI.Core.Abstractions;
 using WpfUI.Core.Base;
+using WpfUI.Core.Collections;
+using WpfUI.Core.Dmain.Models;
 
 namespace WpfUI.Features.Waveform.Explorer;
 
+/// <summary>
+/// ViewModel for the TDMS File/Channel Explorer interface supporting Drag and Drop.
+/// </summary>
 public sealed class WaveformExpViewModel : ViewModelBase
 {
-    private readonly ITdmsService _tdmsService;
+    private readonly WaveformService _service;
+    private readonly ITdmsService _tdms;
 
-    public ObservableCollection<TdmsChannelMetadata> Channels { get; } = [];
-    public BindableReactiveProperty<bool> IsEmpty { get; }
+    private Point _dragStartPoint;
+    private bool _isTrackingMouse;
+    private ChannelNodeViewModel? _draggedChannel;
+
+    // ----------------------------------------------------------------
+    // Properties / Commands
+    // ----------------------------------------------------------------
+
+    public ReactiveProperty<string> SearchText { get; } = new(string.Empty);
+    public ReadOnlyReactiveProperty<bool> IsEmpty { get; }
+
+    public ObservableCollection<IExplorerNodeViewModel> FlattenedNodes { get; } = new();
 
     public ReactiveCommand<DragEventArgs> DropFileCommand { get; } = new();
-    public ReactiveCommand<MouseEventArgs> StartDragCommand { get; } = new();
-    public ReactiveCommand<System.Collections.IList> SelectionChangedCommand { get; } = new();
+    public ReactiveCommand<IExplorerNodeViewModel> DeleteFileCommand { get; } = new();
+    public ReactiveCommand<IExplorerNodeViewModel> CopyPropertyCommand { get; } = new();
+    public ReactiveCommand<MouseButtonEventArgs> ToggleAllSelectCommand { get; } = new();
 
-    // 選択されたチャネルを外部（WaveformView）へ通知するための ReactiveProperty
-    public ReactiveProperty<IEnumerable<TdmsChannelMetadata>> SelectedChannels { get; } = new();
+    public ReactiveCommand<MouseButtonEventArgs> ChannelMouseDownCommand { get; } = new();
+    public ReactiveCommand<MouseEventArgs> ChannelMouseMoveCommand { get; } = new();
+    public ReactiveCommand<MouseButtonEventArgs> ChannelMouseUpCommand { get; } = new();
 
-    public WaveformExpViewModel(ITdmsService tdmsService)
+    // ----------------------------------------------------------------
+    // Constructor
+    // ----------------------------------------------------------------
+
+    public WaveformExpViewModel(WaveformService service, ITdmsService tdms)
     {
-        _tdmsService = tdmsService;
+        _service = service ?? throw new ArgumentNullException(nameof(service));
+        _tdms = tdms ?? throw new ArgumentNullException(nameof(tdms));
 
-        var countChanged =
-            Observable.FromEvent<NotifyCollectionChangedEventHandler, NotifyCollectionChangedEventArgs>(
-                    h => (s, e) => h(e),
-                    h => Channels.CollectionChanged += h,
-                    h => Channels.CollectionChanged -= h)
-                .Select(_ => Channels.Count == 0)
-                .Prepend(Channels.Count == 0);
-        IsEmpty =
-            countChanged
-                .ToBindableReactiveProperty()
-                .AddTo(ref _disposables);
+        // Setup reactive UI states
+        IsEmpty = _service.LoadedFiles
+            .Select(files => files == null || files.Count == 0)
+            .ToReadOnlyReactiveProperty()
+            .AddTo(ref _disposables);
 
-        DropFileCommand.SubscribeAwait(async (e, ct) => await OnDropFileCommand(e, ct));
-        StartDragCommand.SubscribeAwait(async (e, ct) => await OnStartDragCommand(e, ct));
-
-        //SelectionChangedCommand = new ReactiveCommand<System.Collections.IList>();
-        SelectionChangedCommand.Subscribe(items =>
-        {
-            SelectedChannels.Value = items.Cast<TdmsChannelMetadata>().ToList();
-        });
+        InitializeCommandSubscriptions();
     }
 
-    private async Task OnDropFileCommand(DragEventArgs e, CancellationToken ct)
+    // ----------------------------------------------------------------
+    // Pipeline Initialization
+    // ----------------------------------------------------------------
+
+    private void InitializeCommandSubscriptions()
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files) return;
-
-        var tdmsFiles = files.Where(f => f.EndsWith(".tdms", StringComparison.OrdinalIgnoreCase));
-
-        foreach (var file in tdmsFiles)
-        {
-            var metadata = await _tdmsService.GetMetadataAsync(file, ct);
-            var channelInfos = metadata.Groups.SelectMany(g => g.Channels);
-
-            // 3. UIスレッドへの負荷を激減させるため、まとめて追加 (拡張メソッド等の利用を推奨)
-            foreach (var info in channelInfos)
+        // Handle file drop sequence securely via R3 pipeline
+        DropFileCommand
+            .Where(e => e.Data.GetDataPresent(DataFormats.FileDrop))
+            .Select(e => e.Data.GetData(DataFormats.FileDrop) as string[])
+            .Where(files => files != null && files.Length > 0)
+            .Subscribe(async files =>
             {
-                Channels.Add(info);
-            }
-        }
-    }
-
-    private async Task OnStartDragCommand(MouseEventArgs e, CancellationToken ct)
-    {
-        if (e.LeftButton == MouseButtonState.Pressed && SelectedChannels.Value?.Any() == true)
-        {
-            var target = e.Source as FrameworkElement;
-
-            // 転送するデータを作成 (List<TdmsChannelInfo> としてパッケージ)
-            var dataObject = new DataObject();
-            dataObject.SetData(typeof(List<TdmsChannelMetadata>), SelectedChannels.Value.ToList());
-
-            // D&D実行 (ブロック処理なので注意)
-            DragDrop.DoDragDrop(target!, dataObject, DragDropEffects.Copy);
-        }
-    }
-}
-/*
-public class TdmsNodeViewModel(string name, string iconKey, int depth, TdmsChannelInfo? raw = null)
-{
-    public string Name { get; } = name;
-    public string IconKey { get; } = iconKey;
-    public int Depth { get; } = depth;
-    public TdmsChannelInfo? RawData { get; } = raw;
-    public ObservableCollection<TdmsNodeViewModel> Children { get; } = new();
-    public ReactivePropertySlim<bool> IsExpanded { get; } = new(true);
-}
-
-// 階層データ構造 (C# 13 Primary Constructor)
-public record TdmsFileNode(string Name, List<TdmsGroupNode> Groups);
-public record TdmsGroupNode(string Name, List<TdmsChannelNode> Channels);
-public class TdmsChannelNode(TdmsChannelInfo info)
-{
-    public string Name => info.ChannelName;
-    public string Detail => $"{info.SampleCount:N0} pts | {info.DataType}";
-    public ReactiveProperty<bool> IsSelected { get; } = new(false);
-}
-*/
-
-/*
-    public ReactivePropertySlim<string> DroppedFilePath { get; } = new(string.Empty);
-
-    public ReactiveCommand<DragEventArgs> DropCommand { get; }
-    public ReactiveCommand<DragEventArgs> PreviewDragOverCommand { get; }
-
-    public WaveformExpViewModel() : base()
-    {
-        PreviewDragOverCommand = new ReactiveCommand<DragEventArgs>().WithSubscribe(e =>
-        {
-            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
-                ? DragDropEffects.Copy
-                : DragDropEffects.None;
-            e.Handled = true;
-        }).AddTo(ref _disposables);
-        DropCommand = new ReactiveCommand<DragEventArgs>().WithSubscribe(async e =>
-        {
-            if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-            {
-                var path = files[0];
-                if (Path.GetExtension(path).Equals(".tdms", StringComparison.OrdinalIgnoreCase))
+                try
                 {
-                    DroppedFilePath.Value = path;
-                    // 非同期で大容量ファイルを処理
-                    //await Task.Run(() => _tdmsService.LoadFile(path));
+                    await _service.LoadTdmsFilesAsync(files!);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Error] File drop execution failed: {ex.Message}");
+                }
+            })
+            .AddTo(ref _disposables);
+
+        // Toggle selection state for all channels in a group
+        ToggleAllSelectCommand
+            .Subscribe(args =>
+            {
+                if (args.OriginalSource is not FrameworkElement element ||
+                    element.DataContext is not GroupNodeViewModel group) return;
+
+                args.Handled = true;
+
+                var targetKeys = group.Children.Select(channel => channel.Metadata.CacheKey);
+                var shouldSelect = !group.IsSelected.Value;
+                if (shouldSelect)
+                {
+                    _service.AddSelection(targetKeys);
+                }
+                else
+                {
+                    _service.RemoveSelection(targetKeys);
+                }
+            })
+            .AddTo(ref _disposables);
+
+        // Process pure click toggle actions on mouse up
+        ChannelMouseUpCommand
+            .Subscribe(e =>
+            {
+                if (!_isTrackingMouse) return;
+
+                if (_draggedChannel is not null)
+                {
+                    if (!_draggedChannel.IsSelected.Value)
+                        _service.AddSelection(_draggedChannel.Metadata.CacheKey);
+                    else
+                        _service.RemoveSelection(_draggedChannel.Metadata.CacheKey);
+
+                    e.Handled = true;
+                }
+                ResetDragState();
+            })
+            .AddTo(ref _disposables);
+
+        // Capture initial position for Drag and Drop threshold evaluation
+        ChannelMouseDownCommand
+            .Subscribe(e =>
+            {
+                if (e.OriginalSource is DependencyObject depObj &&
+                    FindAncestor<FrameworkElement>(depObj) is FrameworkElement element &&
+                    element.DataContext is ChannelNodeViewModel channelViewModel)
+                {
+                    _dragStartPoint = e.GetPosition(null);
+                    _isTrackingMouse = true;
+                    _draggedChannel = channelViewModel;
+                    e.Handled = true;
+                }
+            })
+            .AddTo(ref _disposables);
+
+        // Evaluate and trigger system Drag and Drop operations
+        ChannelMouseMoveCommand
+            .Subscribe(e =>
+            {
+                if (!_isTrackingMouse || _draggedChannel is null) return;
+
+                if (e.LeftButton != MouseButtonState.Pressed)
+                {
+                    ResetDragState();
+                    return;
+                }
+
+                var currentPosition = e.GetPosition(null);
+                var diff = _dragStartPoint - currentPosition;
+
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    if (e.Source is DependencyObject dragSource)
+                    {
+                        _isTrackingMouse = false;
+
+                        var dataObject = new DataObject("ArcticSlate.TdmsChannel", _draggedChannel.Metadata);
+                        DragDrop.DoDragDrop(dragSource, dataObject, DragDropEffects.Copy);
+
+                        ResetDragState();
+                    }
+                }
+            })
+            .AddTo(ref _disposables);
+
+        // Handle file node removal
+        DeleteFileCommand
+            .Subscribe(node =>
+            {
+                if (node is FileNodeViewModel fileNode)
+                {
+                    _service.RemoveTdmsFiles(new[] { fileNode.FilePath });
+                }
+            })
+            .AddTo(ref _disposables);
+
+        // Route property copying command execution
+        CopyPropertyCommand
+            .Subscribe(OnCopyProperty)
+            .AddTo(ref _disposables);
+
+        // Sync visual selections from external service events
+        _service.SelectedExpChannelsChanged
+            .Subscribe(UpdateNodeSelectionVisuals)
+            .AddTo(ref _disposables);
+
+        // Synchronize and re-build tree hierarchy automatically on data changes
+        _service.LoadedFiles
+            .ObserveOnCurrentDispatcher()
+            .Where(files => files != null)
+            .CombineLatest(SearchText, (files, query) => (files, query))
+            .Subscribe(x => BuildExplorerTree(x.files, x.query))
+            .AddTo(ref _disposables);
+    }
+
+    // ----------------------------------------------------------------
+    // Public Logic Methods
+    // ----------------------------------------------------------------
+
+    /// <summary>
+    /// Constructs a filtered visual tree model representation of the loaded TDMS data structure.
+    /// </summary>
+    public void BuildExplorerTree(IReadOnlyList<TdmsFileMetadata> files, string query)
+    {
+        FlattenedNodes.Clear();
+        if (files.Count == 0) return;
+
+        var filter = query ?? string.Empty;
+        var isFilterEmpty = string.IsNullOrEmpty(filter);
+
+        foreach (var file in files)
+        {
+            var fileNode = new FileNodeViewModel(file);
+            var visibleGroups = new List<GroupNodeViewModel>();
+
+            foreach (var group in file.Groups)
+            {
+                var groupNode = new GroupNodeViewModel(group, fileNode);
+
+                var matchedChannels = group.Channels
+                    .Where(ch => isFilterEmpty || ch.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                    .Select(ch =>
+                    {
+                        var chNode = new ChannelNodeViewModel(ch, groupNode);
+                        chNode.IsSelected.Value = _service.GetSelectedChannels().Contains(ch.CacheKey);
+                        return chNode;
+                    })
+                    .ToList();
+
+                if (matchedChannels.Count > 0 || isFilterEmpty)
+                {
+                    foreach (var chNode in matchedChannels)
+                    {
+                        groupNode.AddChild(chNode);
+                    }
+
+                    if (matchedChannels.Count > 0 && matchedChannels.All(ch => ch.IsSelected.Value))
+                    {
+                        groupNode.IsSelected.Value = true;
+                    }
+                    visibleGroups.Add(groupNode);
                 }
             }
-        });
 
+            if (visibleGroups.Count > 0)
+            {
+                FlattenedNodes.Add(fileNode);
+                foreach (var groupNode in visibleGroups)
+                {
+                    fileNode.AddChild(groupNode);
+                    FlattenedNodes.Add(groupNode);
+                }
+            }
+        }
     }
-*/
 
+    // ----------------------------------------------------------------
+    // Private Helper Methods
+    // ----------------------------------------------------------------
 
-//public class TdmsNodeViewModel(string name, ulong? samples = null, bool isFile = false, bool isGroup = false)
-//{
-//    public string Name { get; } = name;
-//    public string Info => samples.HasValue ? $"{samples:N0} pts" : "";
-//    public ObservableCollection<TdmsNodeViewModel> Children { get; } = new();
+    private void UpdateNodeSelectionVisuals(IReadOnlySet<TdmsCacheKey> activeKeys)
+    {
+        foreach (var groupNode in FlattenedNodes.OfType<GroupNodeViewModel>())
+        {
+            var channels = groupNode.Children.OfType<ChannelNodeViewModel>().ToList();
 
-//    public Geometry? Icon => Application.Current.TryFindResource(GetIconKey()) as Geometry;
+            foreach (var chNode in channels)
+            {
+                chNode.IsSelected.Value = activeKeys.Contains(chNode.Metadata.CacheKey);
+            }
+            groupNode.IsSelected.Value = channels.Count > 0 && channels.All(ch => ch.IsSelected.Value);
+        }
+    }
 
-//    private string GetIconKey() => (isFile, isGroup) switch
-//    {
-//        (true, _) => "IconFileTdms",
-//        (_, true) => "IconFolder",
-//        _ => "IconWaveform"
-//    };
+    private void OnCopyProperty(IExplorerNodeViewModel? node)
+    {
+        if (node is ChannelNodeViewModel channelNode)
+        {
+            var props = string.Join(Environment.NewLine,
+                channelNode.Metadata.Properties.Select(p => $"{p.Key}: {p.Value}"));
 
-//    public Brush IconColor => isFile ? Brushes.SkyBlue : isGroup ? Brushes.Gold : Brushes.LimeGreen;
-//}
+            Clipboard.SetText($"[Channel: {channelNode.Name}]{Environment.NewLine}{props}");
+        }
+    }
+
+    private void ResetDragState()
+    {
+        _isTrackingMouse = false;
+        _draggedChannel = null;
+    }
+
+    // Recursively traverses up the visual tree to find a matching ancestor type.
+    private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
+    {
+        do
+        {
+            if (current is T ancestor) return ancestor;
+            current = VisualTreeHelper.GetParent(current);
+        } while (current != null);
+
+        return null;
+    }
+}
