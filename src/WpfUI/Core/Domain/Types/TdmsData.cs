@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WpfUI.Core.Dmain.Models;
+namespace WpfUI.Core.Domain.Types;
 
 public abstract record TdmsValue
 {

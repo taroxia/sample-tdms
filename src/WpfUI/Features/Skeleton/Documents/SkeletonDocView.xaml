@@ -1,0 +1,61 @@
+<core:ViewBase x:TypeArguments="local:SkeletonDocViewModel"
+               x:Class="WpfUI.Features.Skeleton.Documents.SkeletonDocView"
+               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+               xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+               xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+               xmlns:ScottPlot="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+               xmlns:local="clr-namespace:WpfUI.Features.Skeleton.Documents"
+               xmlns:core="clr-namespace:WpfUI.Core.Base"
+               mc:Ignorable="d"
+               d:DesignHeight="450" d:DesignWidth="550">
+
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../Assets/Icons.xaml"/>
+        <ResourceDictionary Source="../Assets/Icons.Documents.xaml"/>
+        <ResourceDictionary Source="../Assets/Styles.xaml"/>
+        <ResourceDictionary Source="../Assets/Styles.Documents.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <Grid Background="#1E1E1E">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Height="40" Margin="5" Style="{StaticResource DropZoneBorderStyle}"
+            Visibility="Visible" AllowDrop="True" Drop="NewLayerZone_Drop">
+      <TextBlock Text="[Drop Zone: New Plot Layer (多段追加)]" Foreground="#4A90E2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    </Border>
+
+    <Grid Grid.Row="1" Margin="5">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+
+      <ScottPlot:WpfPlot x:Name="PlotControl" Grid.Column="1"/>
+
+      <Border Grid.Column="1" Height="30" VerticalAlignment="Bottom" Background="#aa000000" AllowDrop="True" Drop="XAxisZone_Drop">
+        <TextBlock Text="[X-Axis Drop Zone]" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Border>
+    </Grid>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Background="#151515">
+      <TextBlock Text="軸管理バッジ: " Foreground="#A1A1AA" VerticalAlignment="Center"/>
+      <Border Style="{StaticResource ModernBadgeStyle}" x:Name="XAxisBadge" Visibility="Collapsed">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock x:Name="TxtXAxis" Foreground="White" Margin="0,0,5,0"/>
+          <Button Content="✕" Background="Transparent" BorderThickness="0" Foreground="Red" Click="RemoveXAxis_Click"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Grid>
+</core:ViewBase>

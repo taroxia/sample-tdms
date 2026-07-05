@@ -107,15 +107,15 @@
                         <TextBlock Text="{Binding Position}" Foreground="#0ea5e9" FontWeight="Bold" Margin="0,0,6,0" FontSize="10"/>
                         <TextBlock Text="{Binding Channel.Name}" Foreground="#E2E8F0" FontSize="11" MaxWidth="120" TextTrimming="CharacterEllipsis"/>
 
-                        <Button Content="✕" Margin="6,0,0,0" Foreground="#EF4444" Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                                        Command="{Binding DataContext.RemoveAssignmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                          <Button.CommandParameter>
-                            <MultiBinding Converter="{StaticResource TupleConverter}">
-                              <Binding Path="DataContext" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType={x:Type UserControl}}"/>
-                              <Binding/>
-                            </MultiBinding>
-                          </Button.CommandParameter>
-                        </Button>
+                        <Button Content="✕"
+                                Margin="6,0,0,0"
+                                Foreground="#EF4444"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                Command="{Binding DataContext.RemoveAssignmentCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}"
+                                CommandParameter="{Binding}"/>
+
                       </StackPanel>
                     </Border>
                   </DataTemplate>

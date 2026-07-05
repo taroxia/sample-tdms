@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 using WpfUI.Core.Collections;
 using WpfUI.Infrastructure.Persistence.Tdms.Native;
 
-namespace WpfUI.Core.Dmain.Models;
+namespace WpfUI.Core.Domain.Types;
 
 /// <summary>
 /// 
@@ -37,10 +37,11 @@ public record TdmsChannelMetadata(
     ulong SampleCount,
     DataType DataType = DataType.Double)
 {
-    // C# 13 field キーワード（セッター側での加工用：必要に応じて自動プロパティにも変更可）
     public string FilePath { get; init; } = string.Empty;
     public string GroupName { get; init; } = string.Empty;
     public TdmsCacheKey CacheKey { get; init; }
+
+    public override int GetHashCode() => CacheKey.GetHashCode();
 }
 
 /// <summary>

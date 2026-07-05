@@ -11,14 +11,14 @@ using R3;
 using WpfUI.Core.Abstractions;
 using WpfUI.Core.Base;
 using WpfUI.Core.Collections;
-using WpfUI.Core.Dmain.Models;
+using WpfUI.Core.Domain.Types;
 
 namespace WpfUI.Features.Waveform.Explorer;
 
 /// <summary>
 /// ViewModel for the TDMS File/Channel Explorer interface supporting Drag and Drop.
 /// </summary>
-public sealed class WaveformExpViewModel : ViewModelBase
+public sealed class WaveformExpViewModel : ExplorerViewModelBase
 {
     private readonly WaveformService _service;
     private readonly ITdmsService _tdms;
@@ -60,14 +60,14 @@ public sealed class WaveformExpViewModel : ViewModelBase
             .ToReadOnlyReactiveProperty()
             .AddTo(ref _disposables);
 
-        InitializeCommandSubscriptions();
+        InitializePipeline();
     }
 
     // ----------------------------------------------------------------
     // Pipeline Initialization
     // ----------------------------------------------------------------
 
-    private void InitializeCommandSubscriptions()
+    private void InitializePipeline()
     {
         // Handle file drop sequence securely via R3 pipeline
         DropFileCommand

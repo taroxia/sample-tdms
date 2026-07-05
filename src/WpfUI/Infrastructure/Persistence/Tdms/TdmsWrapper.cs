@@ -12,7 +12,7 @@ using System.Windows.Documents;
 using OpenTK.Audio.OpenAL;
 using ScottPlot.TickGenerators.TimeUnits;
 
-using WpfUI.Core.Dmain.Models;
+using WpfUI.Core.Domain.Types;
 using WpfUI.Infrastructure.Persistence.Tdms.Native;
 
 namespace WpfUI.Infrastructure.Persistence.Tdms;

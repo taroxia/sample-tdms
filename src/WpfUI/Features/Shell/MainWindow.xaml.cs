@@ -2,9 +2,12 @@
 //
 // ────────────────────────────────
 
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
+using AvalonDock.Layout;
 using R3;
+using WpfUI.Core.Base;
 
 namespace WpfUI.Features.Shell;
 
@@ -15,12 +18,11 @@ public partial class MainWindow : Window
     {
         DataContext = viewModel;
 
-        viewModel.Navigation.IsSidebarExpanded.Subscribe(isExpanded =>
-        {
-            //    VisualStateManager.GoToElementState(this, isExpanded ? "Expanded" : "Collapsed", true);
-            VisualStateManager.GoToElementState(Sidebar, isExpanded ? "Expanded" : "Collapsed", true);
-            ToggleIcon.Data = (Geometry)FindResource(isExpanded ? "Icon.ChevronLeft" : "Icon.ChevronRight");
-        });
+        viewModel.Navigation.IsSidebarExpanded
+            .Subscribe(isExpanded =>
+            {
+                VisualStateManager.GoToElementState(Sidebar, isExpanded ? "Expanded" : "Collapsed", true);
+            });
     }
     public MainWindow()
     {

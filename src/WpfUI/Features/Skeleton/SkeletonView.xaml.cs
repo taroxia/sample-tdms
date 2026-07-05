@@ -2,11 +2,16 @@
 //
 // ────────────────────────────────
 
+using System.Windows.Controls;
+// ---.
 using WpfUI.Core.Base;
 
-namespace WpfUI.Features.Settings;
+namespace WpfUI.Features.Skeleton;
 
-public partial class SettingsViewModel : FeatureViewModelBase
+public partial class SkeletonView : ViewBase<SkeletonViewModel>
 {
-    public SettingsViewModel() { }
+    public SkeletonView()
+    {
+        InitializeComponent();
+    }
 }

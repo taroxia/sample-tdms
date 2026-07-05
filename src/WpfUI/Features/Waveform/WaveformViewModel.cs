@@ -11,43 +11,141 @@ using System.Windows.Input;
 using R3;
 
 using WpfUI.Core.Base;
-using WpfUI.Core.Dmain.Models;
+using WpfUI.Core.Collections;
+using WpfUI.Core.Domain.Types;
 using WpfUI.Infrastructure.Persistence.Tdms;
 
 namespace WpfUI.Features.Waveform;
 
-public sealed class WaveformViewModel : ViewModelBase
+public sealed class WaveformViewModel : FeatureViewModelBase
 {
     private readonly WaveformService _service;
 
+    // ----------------------------------------------------------------
+    // Properties / Commands
+    // ----------------------------------------------------------------
+
     public ObservableCollection<PlotLayerModel> PlotLayers => _service.PlotLayers;
     public ReactiveProperty<ScottPlot.AxisLimits> SharedAxisLimits => _service.SharedAxisLimits;
+    public ReactiveProperty<ScottPlot.CoordinateRange> SharedXLimits => _service.SharedXLimits;
 
-    public BindableCommand AddLayerCommand { get; }
-    public BindableCommand<PlotLayerModel> RemoveLayerCommand { get; }
-    public BindableCommand<(PlotLayerModel Layer, PlotAssignment Assignment)> RemoveAssignmentCommand { get; }
+    public ReactiveCommand AddLayerCommand { get; private set; } = new();
+    public ReactiveCommand<PlotLayerModel> RemoveLayerCommand { get; private set; } = new();
+    public ReactiveCommand<PlotAssignment> RemoveAssignmentCommand { get; private set; }
 
     // グラフ再描画をViewへ通知するためのイベントストリーム
     private readonly Subject<Unit> _requestRender = new();
     public Observable<Unit> RequestRender => _requestRender;
 
+    // ----------------------------------------------------------------
+    // Constructor
+    // ----------------------------------------------------------------
+
     public WaveformViewModel(WaveformService service)
     {
         _service = service;
 
-        AddLayerCommand = new BindableCommand(_ => _service.AddNewLayer()).AddTo(ref _disposables);
-        RemoveLayerCommand = new BindableCommand<PlotLayerModel>(layer => _service.RemoveLayer(layer)).AddTo(ref _disposables);
+        InitializePipeline();
+    }
 
-        RemoveAssignmentCommand = new BindableCommand<(PlotLayerModel Layer, PlotAssignment Assignment)>(pair =>
-        {
-            pair.Layer.Assignments.Remove(pair.Assignment);
-            _requestRender.OnNext(Unit.Default);
-        }).AddTo(ref _disposables);
+    // ----------------------------------------------------------------
+    // Pipeline Initialization
+    // ----------------------------------------------------------------
+
+    private void InitializePipeline()
+    {
+        AddLayerCommand
+            .Subscribe(_ =>
+            {
+                _service.AddNewLayer();
+                _requestRender.OnNext(Unit.Default);
+            }).AddTo(ref _disposables);
+
+        RemoveLayerCommand
+            .Subscribe(layer =>
+            {
+                _service.RemoveLayer(layer);
+                _requestRender.OnNext(Unit.Default);
+            }).AddTo(ref _disposables);
+
+        RemoveAssignmentCommand = new ReactiveCommand<PlotAssignment>();
+
+        RemoveAssignmentCommand
+            .Subscribe(assignment =>
+            {
+                if (assignment == null) return;
+
+                if (assignment.Position == AxisPosition.X)
+                {
+                    foreach (var targetLayer in PlotLayers)
+                    {
+                        targetLayer.Assignments.Remove(assignment);
+                    }
+                }
+                else
+                {
+                    // assignment 内に LayerId があるため、O(1) または高速な LINQ でレイヤーを特定可能
+                    var targetLayer = PlotLayers.FirstOrDefault(l => l.LayerId == assignment.LayerId);
+                    if (targetLayer == null) return;
+
+                    targetLayer.Assignments.Remove(assignment);
+                }
+
+                //RequestPlotUpdate();
+                _requestRender.OnNext(Unit.Default);
+            });
+    }
+
+    // ----------------------------------------------------------------
+    // Public Logic Methods
+    // ----------------------------------------------------------------
+
+    protected override void OnDisposed()
+    {
+        _requestRender.OnCompleted();
     }
 
     // ViewのDrop処理から呼び出されるコアロジック
-    public async Task HandleChannelDropAsync(PlotLayerModel layer, TdmsChannelMetadata channel, AxisPosition position)
+    public async Task HandleChannelDropAsync(PlotLayerModel layer, AxisPosition position)
     {
+        var currentDict = _service.SelectedExpChannelsMetadata.CurrentValue;
+        if (currentDict == null || currentDict.Count == 0) return;
+
+        var existingSet = layer.Assignments
+            .Select(a => (a.Channel, a.Position))
+            .ToHashSet();
+
+        var newAssignments = currentDict.Values
+            .Where(channel => channel != null && !existingSet.Contains((channel, position)))
+            .Select(channel => new PlotAssignment(
+                LayerId: layer.LayerId,
+                Channel: channel,
+                Position: position,
+                AxisId: Guid.NewGuid().ToString("N")
+            // AxisId: $"Axis_{position}_{channel.GetHashCode()}" // ScottPlot 5用のユニークなAxisIdの生成例
+            ))
+            .ToList();
+
+        if (position == AxisPosition.X)
+        {
+            if (newAssignments.Count != 0)
+            {
+                foreach (var targetLayer in PlotLayers)
+                {
+                    var existingX = targetLayer.Assignments.FirstOrDefault(a => a.Position == AxisPosition.X);
+                    if (existingX != null) targetLayer.Assignments.Remove(existingX);
+                    targetLayer.Assignments.Add(newAssignments[0]);
+                }
+            }
+        }
+        else
+        {
+            foreach (var assignment in newAssignments)
+            {
+                layer.Assignments.Add(assignment);
+            }
+        }
+#if false
         if (channel == null) return;
 
         // X軸は1つの段につき1つのみ、Y軸はマルチアサイン可能とする
@@ -61,10 +159,10 @@ public sealed class WaveformViewModel : ViewModelBase
 
         var assignment = new PlotAssignment(channel, position, axisId);
         layer.Assignments.Add(assignment);
+#endif
 
         // Navigatorの選択状態をクリア
         _service.ClearExpSelection();
-
         // Viewへ再レンダリングを要請
         _requestRender.OnNext(Unit.Default);
         await Task.CompletedTask;
@@ -76,32 +174,4 @@ public sealed class WaveformViewModel : ViewModelBase
         using var rawData = await _service.GetChannelDataAsync(channel);
         return _service.ConvertToDoubleArray(rawData.Value);
     }
-
-    public void Dispose()
-    {
-        _requestRender.OnCompleted();
-        _disposables.Dispose();
-    }
-}
-
-// シンプルなR3ベースのICommand実装
-public sealed class BindableCommand : ICommand, IDisposable
-{
-    private readonly Action<object?> _execute;
-    public event EventHandler? CanExecuteChanged;
-    public BindableCommand(Action<object?> execute) => _execute = execute;
-    public bool CanExecute(object? parameter) => true;
-    public void SystemNotify() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-    public void Execute(object? parameter) => _execute(parameter);
-    public void Dispose() { }
-}
-
-public sealed class BindableCommand<T> : ICommand, IDisposable
-{
-    private readonly Action<T> _execute;
-    public event EventHandler? CanExecuteChanged;
-    public BindableCommand(Action<T> execute) => _execute = execute;
-    public bool CanExecute(object? parameter) => true;
-    public void Execute(object? parameter) { if (parameter is T t) _execute(t); }
-    public void Dispose() { }
 }

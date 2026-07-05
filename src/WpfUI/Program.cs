@@ -9,6 +9,9 @@ using WpfUI.Core.Abstractions;
 using WpfUI.Core.Base;
 using WpfUI.Features.Settings;
 using WpfUI.Features.Shell;
+using WpfUI.Features.Skeleton;
+using WpfUI.Features.Skeleton.Documents;
+using WpfUI.Features.Skeleton.Explorer;
 using WpfUI.Features.Waveform;
 using WpfUI.Features.Waveform.Explorer;
 using WpfUI.Infrastructure.Cli;
@@ -37,12 +40,19 @@ public class Program
         builder.Services.AddSingleton<INavigationService, NavigationService>();
         builder.Services.AddSingleton<ITdmsService, TdmsService>();
         builder.Services.AddSingleton<WaveformService>();
+        builder.Services.AddSingleton<SkeletonService>();
+        //builder.Services.AddSingleton<DocTemplateSelector>();
 
         // --- Navigation Mapping (The Source of Truth) ---
         builder.Services.AddNavigation(nav => nav
             .Add<WaveformView, WaveformViewModel,
                  WaveformExpView, WaveformExpViewModel>
                 ("Wave", "Icon.Waveform")
+
+            .Add<SkeletonView, SkeletonViewModel,
+                 SkeletonExpView, SkeletonExpViewModel,
+                 SkeletonDocView, SkeletonDocViewModel>
+                ("Skeleton", "Icon.Waveform")
 
             // --- 
             .Add<SettingsView, SettingsViewModel>

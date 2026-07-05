@@ -5,7 +5,7 @@
 using R3;
 
 using WpfUI.Core.Collections;
-using WpfUI.Core.Dmain.Models;
+using WpfUI.Core.Domain.Types;
 
 namespace WpfUI.Features.Waveform;
 

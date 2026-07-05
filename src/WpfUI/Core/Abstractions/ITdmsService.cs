@@ -3,7 +3,7 @@
 // ────────────────────────────────
 
 using WpfUI.Core.Collections;
-using WpfUI.Core.Dmain.Models;
+using WpfUI.Core.Domain.Types;
 using WpfUI.Infrastructure.Persistence.Tdms;
 
 namespace WpfUI.Core.Abstractions;

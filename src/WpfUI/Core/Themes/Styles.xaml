@@ -8,6 +8,9 @@
   <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F8FAFC"/>
   <SolidColorBrush x:Key="SecondaryTextBrush" Color="#94A3B8"/>
   <SolidColorBrush x:Key="AccentBrush" Color="#6366F1"/>
+  <SolidColorBrush x:Key="FrostWhite">#E2E8F0</SolidColorBrush>
+  <SolidColorBrush x:Key="CyberCyan">#0ea5e9</SolidColorBrush>
+  <SolidColorBrush x:Key="ElectricSlate">#00ADB5</SolidColorBrush>
 
   <LinearGradientBrush x:Key="GlassBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
     <GradientStop Color="#1AFFFFFF" Offset="0"/>
@@ -60,6 +63,46 @@
     <Setter Property="FontSize" Value="18"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Margin" Value="20,24,20,16"/>
+  </Style>
+
+
+  <SolidColorBrush x:Key="ModernAccentBlueBrush" Color="#007ACC"/>
+  <SolidColorBrush x:Key="ModernSplitterNormalBrush" Color="#33FFFFFF"/>
+
+  <!-- Main View Splitter -->
+  <Style x:Key="ModernGridSplitterStyle" TargetType="GridSplitter">
+    <Setter Property="Height" Value="8"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="ShowsPreview" Value="False"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="GridSplitter">
+          <Grid Background="Transparent" SnapsToDevicePixels="True">
+            <Border x:Name="SplitterLine"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Center"
+                                Height="2"
+                                Background="{StaticResource ModernSplitterNormalBrush}"
+                                CornerRadius="1"
+                                Opacity="0.6"/>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="SplitterLine" Property="Height" Value="4" />
+              <Setter TargetName="SplitterLine" Property="Opacity" Value="1.0" />
+              <Setter TargetName="SplitterLine" Property="Background" Value="{StaticResource ModernAccentBlueBrush}" />
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+              <Setter TargetName="SplitterLine" Property="Height" Value="4" />
+              <Setter TargetName="SplitterLine" Property="Opacity" Value="1.0" />
+              <Setter TargetName="SplitterLine" Property="Background" Value="{StaticResource ModernAccentBlueBrush}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
 </ResourceDictionary>

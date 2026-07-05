@@ -1,0 +1,5 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Geometry x:Key="IconExplorerFolderGeometry">M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z</Geometry>
+  <Geometry x:Key="IconChannelGeometry">M19,12V14H5V12H19M19,16V18H5V16H19M19,8V10H5V8H19Z</Geometry>
+</ResourceDictionary>

@@ -16,7 +16,9 @@ public record NavigationData(
     Type ViewType,
     Type ViewModelType,
     Type? ExplorerViewType = null,
-    Type? ExplorerViewModelType = null);
+    Type? ExplorerViewModelType = null,
+    Type? DocumentViewType = null,
+    Type? DocumentViewModelType = null);
 
 public static class NavigationExtensions
 {
@@ -36,7 +38,7 @@ public static class NavigationExtensions
 
         public Builder Add<TView, TViewModel>(string title, string iconkey)
             where TView : class
-            where TViewModel : class
+            where TViewModel : FeatureViewModelBase
         {
             services.AddTransient<TView>();
             services.AddTransient<TViewModel>();
@@ -47,21 +49,53 @@ public static class NavigationExtensions
             return this;
         }
 
-        public Builder Add<TView, TViewModel, TExplorerView, TExplorerViewModel>(string title, string iconkey)
+        public Builder Add<TView, TViewModel, TExtraView, TExtraViewModel>(string title, string iconkey)
             where TView : class
-            where TViewModel : class
+            where TViewModel : FeatureViewModelBase
+            where TExtraView : class
+            where TExtraViewModel : class
+        {
+            services.AddTransient<TView>();
+            services.AddTransient<TViewModel>();
+            services.AddTransient<TExtraView>();
+            services.AddTransient<TExtraViewModel>();
+
+            if (typeof(ExplorerViewModelBase).IsAssignableFrom(typeof(TExtraViewModel)))
+            {
+                NavigationList.Add(new NavigationData(
+                    title, iconkey,
+                    typeof(TView), typeof(TViewModel),
+                    typeof(TExtraView), typeof(TExtraViewModel)));
+            }
+            else if (typeof(DocumentViewModelBase).IsAssignableFrom(typeof(TExtraViewModel)))
+            {
+                NavigationList.Add(new NavigationData(
+                    title, iconkey,
+                    typeof(TView), typeof(TViewModel),
+                    null, null,
+                    typeof(TExtraView), typeof(TExtraViewModel)));
+            }
+            return this;
+        }
+
+        public Builder Add<TView, TViewModel, TExplorerView, TExplorerViewModel, TDocumentView, TDocumentViewModel>(string title, string iconkey)
+            where TView : class
+            where TViewModel : FeatureViewModelBase
             where TExplorerView : class
-            where TExplorerViewModel : class
+            where TExplorerViewModel : ExplorerViewModelBase
+            where TDocumentView : class
+            where TDocumentViewModel : DocumentViewModelBase
         {
             services.AddTransient<TView>();
             services.AddTransient<TViewModel>();
             services.AddTransient<TExplorerView>();
             services.AddTransient<TExplorerViewModel>();
+            services.AddTransient<TDocumentView>();
+            services.AddTransient<TDocumentViewModel>();
             NavigationList.Add(new NavigationData(
-                title, iconkey, typeof(TView),
-                typeof(TViewModel),
-                typeof(TExplorerView),
-                typeof(TExplorerViewModel)));
+                title, iconkey, typeof(TView), typeof(TViewModel),
+                typeof(TExplorerView), typeof(TExplorerViewModel),
+                typeof(TDocumentView), typeof(TDocumentViewModel)));
             return this;
         }
     }

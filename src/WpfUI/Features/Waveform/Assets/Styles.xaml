@@ -4,9 +4,6 @@
 
     <Color x:Key="BaseBackground">#1E2530</Color>
     <Color x:Key="ControlBackground">#262F3D</Color>
-    <Color x:Key="FrostWhite">#E2E8F0</Color>
-    <Color x:Key="CyberCyan">#0ea5e9</Color>
-    <Color x:Key="ElectricSlate">#00ADB5</Color>
 
     <Style TargetType="TextBlock">
         <Setter Property="Foreground" Value="{StaticResource FrostWhite}"/>
