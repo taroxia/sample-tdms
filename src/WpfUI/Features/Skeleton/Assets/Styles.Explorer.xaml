@@ -5,7 +5,6 @@
     <Setter Property="BorderBrush" Value="#3F3F46"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="CornerRadius" Value="6"/>
-    <Setter Property="Padding" Value="8"/>
     <Setter Property="Margin" Value="0,0,0,8"/>
   </Style>
 </ResourceDictionary>

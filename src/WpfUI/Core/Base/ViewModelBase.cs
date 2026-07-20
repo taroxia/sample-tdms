@@ -40,20 +40,26 @@ public abstract class FeatureViewModelBase : ViewModelBase { }
 
 public abstract class DocumentViewModelBase : ViewModelBase
 {
-    // AvalonDockの各レイアウトアイテムと双方向同期するためのR3プロパティ群
-    public ReactiveProperty<string> Title { get; }
-    public ReactiveProperty<bool> IsSelected { get; }
     public ReactiveProperty<bool> IsActive { get; }
     public ReactiveProperty<bool> IsFloating { get; }
+    public ReactiveProperty<bool> IsSelected { get; }
     public ReactiveProperty<string> ContentId { get; }
+    public ReactiveProperty<Type?> CurrentContextKey { get; }
+    public ReactiveProperty<string> Title { get; }
 
     protected DocumentViewModelBase(string title, string contentId)
     {
-        Title = new ReactiveProperty<string>(title).AddTo(ref _disposables);
-        IsSelected = new ReactiveProperty<bool>(false).AddTo(ref _disposables);
         IsActive = new ReactiveProperty<bool>(false).AddTo(ref _disposables);
         IsFloating = new ReactiveProperty<bool>(false).AddTo(ref _disposables);
+        IsSelected = new ReactiveProperty<bool>(false).AddTo(ref _disposables);
         ContentId = new ReactiveProperty<string>(Guid.NewGuid().ToString()).AddTo(ref _disposables);
+        CurrentContextKey = new ReactiveProperty<Type?>().AddTo(ref _disposables);
+        Title = new ReactiveProperty<string>(title).AddTo(ref _disposables);
+
+        //IsFloating
+        //    .Where(x => x)
+        //    .Subscribe(_ => IsInteracted.Value = true)
+        //    .AddTo(ref _disposables);
     }
 }
 

@@ -4,11 +4,10 @@
   <SolidColorBrush x:Key="AccentBadgeBrush" Color="#2A2D34" />
   <SolidColorBrush x:Key="TextLightBrush" Color="#F5F5F6" />
   <SolidColorBrush x:Key="BorderDropZoneBrush" Color="#4A90E2" />
-
+  
   <Style x:Key="ModernBadgeStyle" TargetType="Border">
     <Setter Property="Background" Value="{StaticResource AccentBadgeBrush}"/>
     <Setter Property="CornerRadius" Value="4"/>
-    <Setter Property="Padding" Value="6,3"/>
     <Setter Property="Margin" Value="4"/>
   </Style>
 </ResourceDictionary>

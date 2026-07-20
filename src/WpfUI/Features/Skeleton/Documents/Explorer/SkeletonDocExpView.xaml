@@ -1,0 +1,43 @@
+<core:ViewBase x:TypeArguments="local:SkeletonDocExpViewModel"
+               x:Class="WpfUI.Features.Skeleton.Documents.Explorer.SkeletonDocExpView"
+               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:local="clr-namespace:WpfUI.Features.Skeleton.Documents.Explorer"
+               xmlns:core="clr-namespace:WpfUI.Core.Base">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../../Assets/Icons.Documents.xaml"/>
+        <ResourceDictionary Source="../../Assets/Styles.Documents.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <Border Style="{StaticResource DocContainerBorderStyle}" Margin="4">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <Border Grid.Row="0" Style="{StaticResource DocSectionHeaderBorderStyle}">
+        <StackPanel Orientation="Horizontal">
+          <Path Data="{StaticResource IconExplorerGeometry}" Fill="#94A3B8" Stretch="Uniform" Width="14" Height="14"/>
+          <TextBlock Text="Data Stream Explorer" Style="{StaticResource DocHeaderTextStyle}"/>
+        </StackPanel>
+      </Border>
+
+      <ListBox Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="0,8,0,0"
+                     ItemsSource="{Binding NodeList}"
+                     SelectedItem="{Binding SelectedNode.Value, Mode=TwoWay}">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Border Padding="6" CornerRadius="4" Background="#1E2235" Margin="0,2">
+              <TextBlock Text="{Binding}" Foreground="#E2E8F0" FontSize="12"/>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+  </Border>
+</core:ViewBase>

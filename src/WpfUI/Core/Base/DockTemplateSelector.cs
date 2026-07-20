@@ -73,15 +73,29 @@ public class DockTemplateSelector : DataTemplateSelector
     /// </summary>
     private DataTemplate CreateEmptyPlaceholderTemplate()
     {
+        // var xaml = @"
+        //     <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
+        //         <Grid Background='#F5F5F5'>
+        //             <Border BorderBrush='#CCCCCC' BorderThickness='2' BorderDashArray='4 4' Margin='10' CornerRadius='4'>
+        //                 <TextBlock Text='ここにドメインペインをドロップして並べて比較できます' 
+        //                            HorizontalAlignment='Center' 
+        //                            VerticalAlignment='Center' 
+        //                            Foreground='#888888' 
+        //                            FontSize='12'/>
+        //             </Border>
+        //         </Grid>
+        //     </DataTemplate>";
+
         var xaml = @"
             <DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>
-                <Grid Background='#F5F5F5'>
-                    <Border BorderBrush='#CCCCCC' BorderThickness='2' BorderDashArray='4 4' Margin='10' CornerRadius='4'>
-                        <TextBlock Text='ここにドメインペインをドロップして並べて比較できます' 
-                                   HorizontalAlignment='Center' 
-                                   VerticalAlignment='Center' 
-                                   Foreground='#888888' 
-                                   FontSize='12'/>
+                <Grid Background='#F9FAFB'>
+                    <Border BorderBrush='#D1D5DB' BorderThickness='2' BorderDashArray='4 4' Margin='12' CornerRadius='6'>
+                        <StackPanel HorizontalAlignment='Center' VerticalAlignment='Center'>
+                            <TextBlock Text='📊 ドッキング可能領域' 
+                                       HorizontalAlignment='Center' Foreground='#4B5563' FontSize='13' FontWeight='Bold' Margin='0,0,0,6'/>
+                            <TextBlock Text='ここに他のフローティングペインをドロップして配置できます' 
+                                       HorizontalAlignment='Center' Foreground='#9CA3AF' FontSize='11'/>
+                        </StackPanel>
                     </Border>
                 </Grid>
             </DataTemplate>";

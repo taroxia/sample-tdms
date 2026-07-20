@@ -1,37 +1,28 @@
-// ────────────────────────────────
-//
-// ────────────────────────────────
-
 using System;
-using System.Collections.Generic;
 using R3;
 
 namespace WpfUI.Features.Skeleton;
 
 public sealed partial class SkeletonService
 {
-    // Explorerで選択されたチャンネルメタデータを保持するリアクティブプロパティ
-    private readonly BindableReactiveProperty<string?> _selectedChannel = new(null);
-    public BindableReactiveProperty<string?> SelectedChannel => _selectedChannel;
-
-    // ----------------------------------------------------------------
-    // Pipeline Initialization
-    // ----------------------------------------------------------------
+    public BindableReactiveProperty<string?> SelectedNode { get; } = new(null);
 
     private void InitializeExplorerPipeline()
     {
-        // 必要に応じた初期化ロジック
+        // Explorerでの選択を自動的にDocuments側にブリッジする例（最強のリアクティブ同期）
+        SelectedNode
+            .Subscribe(node => 
+            {
+                if (node is not null)
+                {
+                    UpdateTargetContent($"Auto-Routed: {node}");
+                }
+            })
+            .AddTo(ref _disposables); // 必要に応じて破棄用の管理へ追加
     }
+
     private void ExplorerDispose()
     {
-    }
-
-    // ----------------------------------------------------------------
-    // Public Logic Methods
-    // ----------------------------------------------------------------
-
-    public void SelectChannel(string? channelName)
-    {
-        _selectedChannel.Value = channelName;
+        SelectedNode.Dispose();
     }
 }

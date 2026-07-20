@@ -1,0 +1,39 @@
+<core:ViewBase x:TypeArguments="local:SkeletonDocChartViewModel"
+               x:Class="WpfUI.Features.Skeleton.Documents.Charts.SkeletonDocChartView"
+               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:local="clr-namespace:WpfUI.Features.Skeleton.Documents.Charts"
+               xmlns:core="clr-namespace:WpfUI.Core.Base"
+               xmlns:scott="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../../Assets/Icons.Documents.xaml"/>
+        <ResourceDictionary Source="../../Assets/Styles.Documents.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <Border Style="{StaticResource DocContainerBorderStyle}" Margin="4">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <Border Grid.Row="0" Style="{StaticResource DocSectionHeaderBorderStyle}">
+        <Grid>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+            <Path Data="{StaticResource IconChartGeometry}" Fill="#6366F1" Stretch="Uniform" Width="14" Height="14"/>
+            <TextBlock Text="{Binding ChartTitle.Value, FallbackValue='Real-time Signal Monitor'}" Style="{StaticResource DocHeaderTextStyle}"/>
+          </StackPanel>
+          <TextBlock Grid.Column="1" HorizontalAlignment="Right" Foreground="#475569" FontSize="11" VerticalAlignment="Center"
+                               Text="ScottPlot 5.0 Engine"/>
+        </Grid>
+      </Border>
+
+      <!-- ScottPlot 5 公式 WPF 統合コントロール -->
+      <scott:WpfPlot x:Name="MainPlot" Grid.Row="1" Margin="0,8,0,0"/>
+    </Grid>
+  </Border>
+</core:ViewBase>

@@ -182,22 +182,49 @@
         <i:Interaction.Behaviors>
           <core:DockBridgeBehavior />
         </i:Interaction.Behaviors>
-        
+
         <xcad:DockingManager.LayoutItemContainerStyle>
           <Style TargetType="{x:Type xcad:LayoutDocumentItem}">
             <Setter Property="Title" Value="{Binding Model.Title.Value, Mode=TwoWay}" />
             <Setter Property="IsSelected" Value="{Binding Model.IsSelected.Value, Mode=TwoWay}" />
             <Setter Property="IsActive" Value="{Binding Model.IsActive.Value, Mode=TwoWay}" />
           </Style>
+
         </xcad:DockingManager.LayoutItemContainerStyle>
 
         <xcad:LayoutRoot>
+          <xcad:LayoutPanel Orientation="Horizontal">
+            <xcad:LayoutDocumentPaneGroup>
+              <!-- xcad:LayoutDocumentPane
+                x:Name="MainDocumentPane"
+                core:DockBridgeBehavior.PaneContextKey="{Binding Navigation.CurrentActiveViewModelType.Value, Mode=OneWay}"
+                DockMinHeight="150"
+                DockMinWidth="150"/ -->
+              <!--xcad:LayoutDocumentPane
+                x:Name="MainDocumentPane"
+                core:DockBridgeBehavior.PaneContextKey="{Binding Navigation.SelectedItem.Value.ViewModelType, Mode=OneWay}">
+              </xcad:LayoutDocumentPane -->
+              
+              <!-- xcad:LayoutDocumentPane
+                x:Name="MainDocumentPane"
+                core:DockBridgeBehavior.PaneContextKey="{Binding Navigation.CurrentNavigatorType}">
+              </xcad:LayoutDocumentPane -->
+
+              <xcad:LayoutDocumentPane
+                x:Name="MainDocumentPane"
+                DockMinHeight="150"
+                DockMinWidth="150"/>
+            </xcad:LayoutDocumentPaneGroup>
+          </xcad:LayoutPanel>
+        </xcad:LayoutRoot>
+
+        <!-- xcad:LayoutRoot>
           <xcad:LayoutPanel Orientation="Vertical">
             <xcad:LayoutDocumentPaneGroup>
               <xcad:LayoutDocumentPane DockMinHeight="150" DockMinWidth="150"/>
             </xcad:LayoutDocumentPaneGroup>
           </xcad:LayoutPanel>
-        </xcad:LayoutRoot>
+        </xcad:LayoutRoot -->
       </xcad:DockingManager>
 
       <!-- Splitter -->

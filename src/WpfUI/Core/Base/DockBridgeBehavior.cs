@@ -3,117 +3,125 @@
 // ────────────────────────────────
 
 using System;
-using System.Collections.Specialized;
-using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using AvalonDock;
-using AvalonDock.Controls;
 using AvalonDock.Layout;
 using Microsoft.Xaml.Behaviors;
 using R3;
-using WpfUI.Core.Base;
 
 namespace WpfUI.Core.Base;
 
-public sealed class DockBridgeBehavior : Behavior<DockingManager>
+public class DockBridgeBehavior : Behavior<DockingManager>
 {
-    private DisposableBag _disposables = new();
+    private DisposableBag _disposables;
 
     protected override void OnAttached()
     {
         base.OnAttached();
 
-        if (AssociatedObject.IsLoaded)
-        {
-            StartMonitoring();
-        }
-        else
-        {
-            // Loadedイベントを安全にハンドル
-            RoutedEventHandler? loadedHandler = null;
-            loadedHandler = (s, e) =>
-            {
-                AssociatedObject.Loaded -= loadedHandler;
-                StartMonitoring();
-            };
-            AssociatedObject.Loaded += loadedHandler;
-        }
-    }
+        // メイン固定ペインへの強制ルーティング戦略を設定
+        AssociatedObject.LayoutUpdateStrategy = new SafeLayoutUpdateStrategy();
 
-    private void StartMonitoring()
-    {
-        _disposables.Dispose(); // 既存の購読をクリア
-        _disposables = new DisposableBag();
+        // LayoutUpdated イベントから R3 の ReactiveProperty へ状態を安全に同期
+        // 頻発するレイアウトイベントを等間隔、または適切なタイミングで同期
+        Observable.FromEvent<EventHandler, EventArgs>(
+            h => (s, e) => h(e),
+            h => AssociatedObject.LayoutUpdated += h,
+            h => AssociatedObject.LayoutUpdated -= h)
 
-        // 1. Navigation.Documents コレクションの変更(追加/削除)を監視
-        // これにより、Navigatorが切り替わってドキュメント数や中身が変わった瞬間にも即座に同期が走ります
-        if (AssociatedObject.DocumentsSource is INotifyCollectionChanged collectionChanged)
-        {
-            Observable.Create<Unit>(observer =>
-            {
-                NotifyCollectionChangedEventHandler handler = (s, e) => observer.OnNext(Unit.Default);
-                collectionChanged.CollectionChanged += handler;
-                return Disposable.Create(() => collectionChanged.CollectionChanged -= handler);
-            })
-            .ObserveOnCurrentDispatcher()
-            .Subscribe(_ => SynchronizeFloatingState())
-            .AddTo(ref _disposables);
-        }
-
-        // 2. AvalonDock のレイアウト構造そのものが再構築されたイベント (LayoutChanged)
-        Observable.Create<Unit>(observer =>
-        {
-            EventHandler handler = (s, e) => observer.OnNext(Unit.Default);
-            AssociatedObject.LayoutChanged += handler;
-            return Disposable.Create(() => AssociatedObject.LayoutChanged -= handler);
-        })
+        .Chunk(TimeSpan.FromMilliseconds(100)) // 負荷軽減のための間引き処理
         .ObserveOnCurrentDispatcher()
-        .Subscribe(_ => SynchronizeFloatingState())
+        .Subscribe(_ => SyncDockState())
         .AddTo(ref _disposables);
 
-        // 3. 【解決策の核心】WPF標準の LayoutUpdated イベントの活用
-        // Tear off（ウィンドウ引きはがし）が行われると、WPFの配置・レイアウト計算が必ず走るため、
-        // このイベントをR3の「Chunk（またはDebounce）」で最適化し、過剰な負荷を抑えつつ確実に状態の変化をハントします。
-        Observable.Create<Unit>(observer =>
-        {
-            EventHandler handler = (s, e) => observer.OnNext(Unit.Default);
-            AssociatedObject.LayoutUpdated += handler;
-            return Disposable.Create(() => AssociatedObject.LayoutUpdated -= handler);
-        })
-        // 連続するレイアウト更新を200ミリ秒間隔に間引き、パフォーマンスを最優先にする（R3公式API）
-        .Chunk(TimeSpan.FromMilliseconds(200))
-        .ObserveOnCurrentDispatcher()
-        .Subscribe(_ => SynchronizeFloatingState())
-        .AddTo(ref _disposables);
-
-        // 初回の初期同期を実行
-        SynchronizeFloatingState();
-    }
-
-    private void SynchronizeFloatingState()
-    {
-        if (AssociatedObject?.Layout == null) return;
-
-        // Layout.Descendents() および OfType<LayoutDocument>() はDirkster99/AvalonDockに実在する確実な走査アルゴリズムです
-        var documents = AssociatedObject.Layout.Descendents().OfType<LayoutDocument>();
-
-        foreach (var doc in documents)
-        {
-            // doc.Content には DocumentsSource から渡された ViewModel 実体（型ベース）が格納されています
-            if (doc.Content is DocumentViewModelBase viewModel)
-            {
-                // WPFのUIスレッドセーフティを担保しながら、R3のReactivePropertyを安全に同期
-                if (viewModel.IsFloating.Value != doc.IsFloating)
-                {
-                    viewModel.IsFloating.Value = doc.IsFloating;
-                }
-            }
-        }
+        // 2. 初回のアタッチ時に現在のレイアウト状態を一度強制同期
+        Dispatcher.BeginInvoke(new Action(SyncDockState));
     }
 
     protected override void OnDetaching()
     {
         _disposables.Dispose();
         base.OnDetaching();
+    }
+
+    private void SyncDockState()
+    {
+        var layout = AssociatedObject.Layout;
+        if (layout == null) return;
+
+        // ツリー上のすべての LayoutDocument を安全に取得
+        var layoutDocs = layout.Descendents().OfType<LayoutDocument>().ToList();
+
+        foreach (var layoutDoc in layoutDocs)
+        {
+            if (layoutDoc.Content is not DocumentViewModelBase vm) continue;
+
+            // 1. 実在するプロパティからフローティング状態を ViewModel へ同期
+            if (vm.IsFloating.Value != layoutDoc.IsFloating)
+            {
+                vm.IsFloating.Value = layoutDoc.IsFloating;
+            }
+
+            // 2. ドッキング状態（非フローティング）の場合、再ドッキングによる所属コンテキストの書き換えをチェック
+
+            if (layoutDoc.IsFloating || layoutDoc.Parent is not LayoutDocumentPane parentPane) continue;
+
+            // A) 同一ペイン内に既に存在する、自分以外の有効なドキュメント ViewModel を取得
+            var siblingVm = parentPane.Children
+                .OfType<LayoutDocument>()
+                .Select(d => d.Content as DocumentViewModelBase)
+                .FirstOrDefault(s => s != null && s != vm);
+
+            if (siblingVm?.CurrentContextKey.Value is { } siblingKey)
+            {
+                if (vm.CurrentContextKey.Value != siblingKey)
+                {
+                    vm.CurrentContextKey.Value = siblingKey;
+                }
+            }
+        }
+    }
+}
+
+/// <summary>
+/// フローティングウィンドウ配下への誤挿入を防ぎ、
+/// ドキュメントが常にメイン固定領域のペインに配置されるようルーティングする安全な戦略クラス。
+/// </summary>
+public sealed class SafeLayoutUpdateStrategy : ILayoutUpdateStrategy
+{
+    public bool BeforeInsertDocument(LayoutRoot layout, LayoutDocument anchorableToShow, ILayoutContainer destinationContainer)
+    {
+        // フローティング窓配下にない、メイン領域の固定ペイン（かつ PaneContextKey を持つペインなど）を特定
+        var mainDocumentPane = layout.Descendents()
+            .OfType<LayoutDocumentPane>()
+            .FirstOrDefault(p => !IsInsideFloatingWindow(p));
+
+        if (mainDocumentPane != null && destinationContainer != mainDocumentPane)
+        {
+            mainDocumentPane.Children.Add(anchorableToShow);
+            return true;
+        }
+        return false;
+    }
+
+    public void AfterInsertDocument(LayoutRoot layout, LayoutDocument anchorableToShow) { }
+
+    public bool BeforeInsertAnchorable(LayoutRoot layout, LayoutAnchorable anchorableToShow, ILayoutContainer destinationContainer) => false;
+
+    public void AfterInsertAnchorable(LayoutRoot layout, LayoutAnchorable anchorableToShow) { }
+
+    private static bool IsInsideFloatingWindow(LayoutElement element)
+    {
+        var current = element.Parent;
+        while (current != null)
+        {
+            if (current is LayoutFloatingWindow)
+            {
+                return true;
+            }
+            current = current.Parent;
+        }
+        return false;
     }
 }

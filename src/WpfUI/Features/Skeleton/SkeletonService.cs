@@ -1,9 +1,4 @@
-// ────────────────────────────────
-//
-// ────────────────────────────────
-
 using System;
-using R3;
 using WpfUI.Core.Base;
 
 namespace WpfUI.Features.Skeleton;
@@ -15,15 +10,13 @@ public sealed partial class SkeletonService : BaseService
         InitializePipeline();
         InitializeExplorerPipeline();
         InitializeDocumentsPipeline();
-
     }
-    // ----------------------------------------------------------------
-    // Pipeline Initialization
-    // ----------------------------------------------------------------
 
     private void InitializePipeline()
     {
+        // 全体横断のリアクティブストリーム結合ロジックをここに集約可能
     }
+
     protected override void OnDisposed()
     {
         ExplorerDispose();

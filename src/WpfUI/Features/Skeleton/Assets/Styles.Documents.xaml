@@ -1,11 +1,55 @@
+<!-- File: WpfUI/Features/Skeleton/Assets/Styles.Documents.xaml -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Style x:Key="DropZoneBorderStyle" TargetType="Border">
-    <Setter Property="Background" Value="#1A4A90E2"/>
-    <Setter Property="BorderBrush" Value="#4A90E2"/>
-    <Setter Property="BorderThickness" Value="2"/>
-    <!-- Setter Property="BorderDashArray" Value="3 3"/ -->
-    <Setter Property="CornerRadius" Value="4"/>
-    <Setter Property="Visibility" Value="Collapsed"/>
+
+  <Style x:Key="DocHeaderTextStyle" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="#F8FAFC"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Margin" Value="8,0,0,0"/>
+  </Style>
+
+  <Style x:Key="DocContainerBorderStyle" TargetType="Border">
+    <Setter Property="Background" Value="#11131E"/>
+    <Setter Property="BorderBrush" Value="#26293B"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="12"/>
+  </Style>
+
+  <Style x:Key="DocSectionHeaderBorderStyle" TargetType="Border">
+    <Setter Property="Background" Value="#161925"/>
+    <Setter Property="BorderBrush" Value="#26293B"/>
+    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+    <Setter Property="Height" Value="38"/>
+    <Setter Property="Padding" Value="12,0"/>
+  </Style>
+
+  <!-- 洗練された開閉用フローティングトグルボタン -->
+  <Style x:Key="FloatingToggleButtonStyle" TargetType="Button">
+    <Setter Property="Background" Value="#2563EB"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Width" Value="20"/>
+    <Setter Property="Height" Value="40"/>
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="BtnBorder" 
+                  Background="{TemplateBinding Background}" 
+                  CornerRadius="0,8,8,0" 
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+      <Trigger Property="IsMouseOver" Value="True">
+        <Setter Property="Background" Value="#3B82F6"/>
+      </Trigger>
+    </Style.Triggers>
   </Style>
 </ResourceDictionary>

@@ -17,6 +17,7 @@ public interface INavigationService
     ReactiveProperty<bool> IsSidebarExpanded { get; }
     ReactiveProperty<bool> IsExplorerExpanded { get; }
 
+    BindableReactiveProperty<Type?> CurrentActiveViewModelType { get; }
     ObservableCollection<DocumentViewModelBase> Documents { get; }
 
     void NavigateTo(NavigationItem item);

@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using R3;
+using Windows.UI.Text;
 
 namespace WpfUI.Core.Base;
 
@@ -40,7 +41,10 @@ public sealed class NavigationService : BaseService, INavigationService
     public ReactiveProperty<bool> IsSidebarExpanded { get; } = new(true);
     public ReactiveProperty<bool> IsExplorerExpanded { get; } = new(true);
 
+    public BindableReactiveProperty<Type?> CurrentActiveViewModelType { get; }
     public ObservableCollection<DocumentViewModelBase> Documents { get; } = new();
+
+    private readonly Dictionary<Type, List<DocumentViewModelBase>> _dockedDocumentsPool = new();
 
     public NavigationService(IServiceProvider provider, IEnumerable<NavigationData> data)
     {
@@ -59,16 +63,54 @@ public sealed class NavigationService : BaseService, INavigationService
                 CurrentView))
              .ToList();
 
+        CurrentActiveViewModelType = SelectedItem
+            .Select(item => item?.ViewModelType)
+            .ToBindableReactiveProperty();
+
         SelectedItem
             .Pairwise()
             .Subscribe(OnNavigationChanged)
             .AddTo(ref _disposables);
 
+        // Default Select.
         if (Items.Any()) NavigateTo(Items.First());
     }
 
     private void OnNavigationChanged((NavigationItem? Previous, NavigationItem? Current) pair)
     {
+        if (pair.Previous is not null && pair.Previous.DocumentViewModelType is not null)
+        {
+            var previousVmType = pair.Previous.ViewModelType;
+            var previousDocVmType = pair.Previous.DocumentViewModelType;
+
+            // 旧画面のコンテキストキーを持ち、かつ「現在ドッキング中（非フローティング）」のドキュメントを抽出
+            var targets = Documents
+                .Where(d => d.CurrentContextKey.Value == previousVmType && !d.IsFloating.Value)
+                .ToList();
+
+            if (!_dockedDocumentsPool.TryGetValue(previousVmType, out var poolList))
+            {
+                poolList = new List<DocumentViewModelBase>();
+                _dockedDocumentsPool[previousVmType] = poolList;
+            }
+            poolList.Clear();
+
+            foreach (var doc in targets)
+            {
+                // UIコレクションから一旦除外
+                Documents.Remove(doc);
+
+                // 正規のデフォルトドキュメント型であれば、プールに記憶せずそのまま使い捨て（解放）
+                if (doc.GetType() == previousDocVmType)
+                {
+                    continue;
+                }
+
+                // 再ドッキングによって混入していた「正規以外」のドキュメントのみプールへ退避
+                poolList.Add(doc);
+            }
+        }
+
         DisposeView(CurrentView.Value);
         DisposeView(CurrentExplorerView.Value);
 
@@ -99,51 +141,72 @@ public sealed class NavigationService : BaseService, INavigationService
         }
 
         // 3. Document View.
-        if (pair.Current.DocumentViewModelType is null)
+        if (pair.Current.DocumentViewModelType is not null)
         {
-            var attachedDocs = Documents.Where(d => !d.IsFloating.Value).ToList();
-            foreach (var doc in attachedDocs)
-            {
-                Documents.Remove(doc);
-                doc.Dispose();
-            }
-        }
-        else
-        {
-            // すでにコレクション内に該当型のViewModelが存在するか確認（型ベース判定）
-            var existingDoc = Documents.FirstOrDefault(d => d.GetType() == pair.Current.DocumentViewModelType);
+            var currentVmType = pair.Current.ViewModelType;
+            var currentDocVmType = pair.Current.DocumentViewModelType;
+            DocumentViewModelBase? defaultDoc = null;
 
-            if (existingDoc != null)
-            {
-                // すでにTear offされているかメイン内にある場合は、最前面（Selected）にする
-                existingDoc.IsSelected.Value = true;
-                existingDoc.IsActive.Value = true;
-                CurrentDocumentView.Value = existingDoc;
-            }
-            else
-            {
-                // 存在しない場合は、DIコンテナから新規にTransientとして生成
-                var newDocVm = (DocumentViewModelBase)_provider.GetRequiredService(pair.Current.DocumentViewModelType);
+            // ① すでに Documents 内に存在するか確認（Tear off された状態で残留している場合など）
+            //defaultDoc = Documents.FirstOrDefault(d => d.GetType() == pair.Current.DocumentViewModelType && d.CurrentContextKey.Value == currentVmType);
+            defaultDoc = Documents.FirstOrDefault(d => d.GetType() == pair.Current.DocumentViewModelType);
 
-                // 初回追加時にコレクションに永続化
-                Documents.Add(newDocVm);
-                newDocVm.IsSelected.Value = true;
-                newDocVm.IsActive.Value = true;
-                CurrentDocumentView.Value = newDocVm;
+
+            bool hasDocViewModel = false;
+            if (pair.Current?.DocumentViewModelType is { } targetType)
+            {
+                hasDocViewModel = _dockedDocumentsPool.Values
+                               .SelectMany(list => list)
+                               .Any(vm => vm != null && targetType.IsAssignableFrom(vm.GetType()))
+                               || Documents.Any(d => d.GetType() == targetType && d.CurrentContextKey.Value == currentVmType);
             }
+
+            // ③ プールにも既存コレクションにも無ければ、DIコンテナから正規ドキュメントを新規 Transient 生成
+            if (defaultDoc is null && !hasDocViewModel)
+            {
+
+                // A. 正規のドキュメントは指定通り Transient として毎回新規生成
+                defaultDoc = (DocumentViewModelBase)_provider.GetRequiredService(currentDocVmType);
+
+                SetupTearOffTracking(defaultDoc);
+
+                defaultDoc.CurrentContextKey.Value = currentVmType;
+                Documents.Add(defaultDoc);
+            }
+
+            // B. 退避プールに、この画面宛ての「正規以外のドキュメント（異物）」が眠っていれば復元
+            if (_dockedDocumentsPool.TryGetValue(currentVmType, out var poolList) && poolList.Any())
+            {
+                foreach (var doc in poolList)
+                {
+                    Documents.Add(doc);
+                }
+                poolList.Clear();
+            }
+
+            // アクティブ化
+            if (defaultDoc is not null)
+            {
+                defaultDoc.IsSelected.Value = true;
+                defaultDoc.IsActive.Value = true;
+            }
+            CurrentDocumentView.Value = defaultDoc;
         }
-#if false
-        if (pair.Current.DocumentViewType is not null)
-        {
-            var docView = (FrameworkElement)_provider.GetRequiredService(pair.Current.DocumentViewType);
-            docView.DataContext = _provider.GetRequiredService(pair.Current.DocumentViewModelType!);
-            CurrentDocumentView.Value = docView;
-        }
-        else
-        {
-            CurrentDocumentView.Value = null;
-        }
-#endif
+    }
+
+    private void SetupTearOffTracking(DocumentViewModelBase doc)
+    {
+        // IsFloating が True かつ CurrentActiveViewModelType が変化した時のみコンテキストを書き換える
+        doc.IsFloating
+            .CombineLatest(CurrentActiveViewModelType, (isFloating, activeType) => (isFloating, activeType))
+            .Subscribe(state =>
+            {
+                if (state.isFloating && state.activeType is not null)
+                {
+                    doc.CurrentContextKey.Value = state.activeType;
+                }
+            })
+            .AddTo(ref _disposables); // サービス終了時に一括解放
     }
 
     public void CloseDocument(DocumentViewModelBase document)
@@ -155,6 +218,14 @@ public sealed class NavigationService : BaseService, INavigationService
         {
             // Transientのライフサイクルを安全に終了させ、確実にメモリとストリームを解放する
             document.Dispose();
+        }
+        foreach (var kp in _dockedDocumentsPool)
+        {
+            if (kp.Value.Remove(document))
+            {
+                document.Dispose();
+                break;
+            }
         }
     }
 
@@ -181,5 +252,18 @@ public sealed class NavigationService : BaseService, INavigationService
         {
             item.Dispose();
         }
+        foreach (var doc in Documents)
+        {
+            doc.Dispose();
+        }
+        foreach (var list in _dockedDocumentsPool.Values)
+        {
+            foreach (var doc in list)
+            {
+                doc.Dispose();
+            }
+        }
+        _dockedDocumentsPool.Clear();
+        Documents.Clear();
     }
 }

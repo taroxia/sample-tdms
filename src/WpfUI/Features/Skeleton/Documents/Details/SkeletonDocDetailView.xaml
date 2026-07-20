@@ -1,0 +1,57 @@
+<core:ViewBase x:TypeArguments="local:SkeletonDocDetailViewModel"
+               x:Class="WpfUI.Features.Skeleton.Documents.Details.SkeletonDocDetailView"
+               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:local="clr-namespace:WpfUI.Features.Skeleton.Documents.Details"
+               xmlns:core="clr-namespace:WpfUI.Core.Base">
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../../Assets/Icons.Documents.xaml"/>
+        <ResourceDictionary Source="../../Assets/Styles.Documents.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <Border Style="{StaticResource DocContainerBorderStyle}" Margin="4">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <!-- 内部でちぎって並列配置（Tear-off風）をエミュレート、または拡張タブ切り替えを可能にするエリアヘッダー -->
+      <Border Grid.Row="0" Style="{StaticResource DocSectionHeaderBorderStyle}">
+        <Grid>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+            <Path Data="{StaticResource IconDetailsGeometry}" Fill="#10B981" Stretch="Uniform" Width="14" Height="14"/>
+            <TextBlock Text="Context Analytics Logs" Style="{StaticResource DocHeaderTextStyle}"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Border Background="#059669" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+              <TextBlock Text="Tab Parallel Attached" Foreground="White" FontSize="10" FontWeight="Bold"/>
+            </Border>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- サブコンテキストデータのグリッド表現 -->
+      <DataGrid Grid.Row="1" Margin="0,8,0,0" Background="Transparent" RowBackground="#161925" AlternatingRowBackground="#1E2235"
+                      BorderThickness="0" GridLinesVisibility="None" Foreground="#E2E8F0" AutoGenerateColumns="False" IsReadOnly="True"
+                      ItemsSource="{Binding AnalyticalMetrics}">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Metric Property" Binding="{Binding PropertyName}" Width="*"/>
+          <DataGridTextColumn Header="Calculated Value" Binding="{Binding Value}" Width="150"/>
+        </DataGrid.Columns>
+        <DataGrid.Resources>
+          <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#26293B"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+          </Style>
+        </DataGrid.Resources>
+      </DataGrid>
+    </Grid>
+  </Border>
+</core:ViewBase>

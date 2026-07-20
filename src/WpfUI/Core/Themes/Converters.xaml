@@ -8,4 +8,5 @@
 
   <core:DepthToMarginConverter x:Key="DepthToMarginConverter" IndentSize="16"/>
 
+  <core:GridLengthConverter x:Key="GridLengthConverter"/>
 </ResourceDictionary>

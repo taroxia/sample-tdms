@@ -2,14 +2,12 @@
                x:Class="WpfUI.Features.Skeleton.Explorer.SkeletonExpView"
                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-               xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
                xmlns:local="clr-namespace:WpfUI.Features.Skeleton.Explorer"
                xmlns:core="clr-namespace:WpfUI.Core.Base"
                mc:Ignorable="d" 
                d:DesignHeight="450" d:DesignWidth="250">
-
   <UserControl.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
@@ -23,14 +21,18 @@
 
   <Grid Background="{StaticResource PrimaryDarkBrush}">
     <StackPanel Margin="10">
-      <TextBlock Text="Skeleton Explorer" Foreground="{StaticResource TextLightBrush}" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
-
-      <Border Style="{StaticResource ExplorerCardStyle}">
+      <TextBlock Text="Metadata Explorer" Foreground="{StaticResource TextLightBrush}" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+      <Border Style="{StaticResource ExplorerCardStyle}" Padding="8">
         <StackPanel>
-          <TextBlock Text="Group A (TDMS Meta)" Foreground="#A1A1AA" FontSize="11" Margin="0,0,0,4"/>
-          <ListBox Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextLightBrush}">
-            <ListBoxItem Content="Channel_01 (Volt)" MouseMove="Channel_MouseMove"/>
-            <ListBoxItem Content="Channel_02 (Amp)" MouseMove="Channel_MouseMove"/>
+          <TextBlock Text="Available Nodes" Foreground="#A1A1AA" FontSize="11" Margin="0,0,0,6"/>
+          <ListBox Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextLightBrush}"
+                   ItemsSource="{Binding AvailableNodes}"
+                   SelectedItem="{Binding SelectedNode.Value, Mode=TwoWay}">
+            <ListBox.ItemContainerStyle>
+              <Style TargetType="ListBoxItem">
+                <EventSetter Event="MouseMove" Handler="Node_MouseMove"/>
+              </Style>
+            </ListBox.ItemContainerStyle>
           </ListBox>
         </StackPanel>
       </Border>

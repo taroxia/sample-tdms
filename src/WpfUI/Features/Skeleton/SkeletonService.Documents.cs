@@ -9,45 +9,27 @@ namespace WpfUI.Features.Skeleton;
 
 public sealed partial class SkeletonService
 {
-    // 多段配置や軸割り当ての状態トポロジーを管理するプロパティ群
-    private readonly ReactiveProperty<int> _plotLayersCount = new(1);
-    public ReadOnlyReactiveProperty<int> PlotLayersCount => _plotLayersCount;
+    public BindableReactiveProperty<string?> SharedTargetContent { get; } = new(null);
 
-    private readonly ReactiveProperty<string?> _xAxisChannel = new(null);
-    public ReadOnlyReactiveProperty<string?> XAxisChannel => _xAxisChannel;
+    // Explorer部の横幅ピクセル状態（初期値 260.0）
+    public BindableReactiveProperty<double> ExplorerWidth { get; } = new(260.0);
 
-    // ----------------------------------------------------------------
-    // Pipeline Initialization
-    // ----------------------------------------------------------------
+    // Explorer部の開閉状態
+    public BindableReactiveProperty<bool> IsExplorerExpanded { get; } = new(true);
 
     private void InitializeDocumentsPipeline()
     {
     }
+
     private void DocumentsDispose()
     {
+        SharedTargetContent.Dispose();
+        ExplorerWidth.Dispose();
+        IsExplorerExpanded.Dispose();
     }
 
-    // ----------------------------------------------------------------
-    // Public Logic Methods
-    // ----------------------------------------------------------------
-
-    public void AssignXAxis(string? channelName)
+    public void UpdateTargetContent(string? content)
     {
-        _xAxisChannel.Value = channelName;
+        SharedTargetContent.Value = content;
     }
-
-    public void AddPlotLayer()
-    {
-        _plotLayersCount.Value++;
-    }
-
-    public void ClearLayout()
-    {
-        _xAxisChannel.Value = null;
-        _plotLayersCount.Value = 1;
-    }
-
-    // ----------------------------------------------------------------
-    // Private Helper Methods
-    // ----------------------------------------------------------------
 }
