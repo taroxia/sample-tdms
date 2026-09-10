@@ -7,14 +7,30 @@ using Microsoft.Extensions.Hosting;
 using Spectre.Console.Cli;
 using WpfUI.Core.Abstractions;
 using WpfUI.Core.Base;
+
+using WpfUI.Features.History;
+using WpfUI.Features.History.Documents;
+using WpfUI.Features.History.Explorer;
+
+using WpfUI.Features.Measure;
+using WpfUI.Features.Measure.Documents;
+using WpfUI.Features.Measure.Explorer;
+using WpfUI.Features.Measure.Waveform;
+using WpfUI.Features.Measure.Waveform.Explorer;
 using WpfUI.Features.Settings;
 using WpfUI.Features.Shell;
 using WpfUI.Features.Skeleton;
 using WpfUI.Features.Skeleton.Documents;
 using WpfUI.Features.Skeleton.Explorer;
-using WpfUI.Features.Waveform;
-using WpfUI.Features.Waveform.Explorer;
+//
+// using WpfUI.Features.Skeleton01;
+// using WpfUI.Features.Skeleton01.Documents;
+// using WpfUI.Features.Skeleton01.Explorer;
+//
 using WpfUI.Infrastructure.Cli;
+using WpfUI.Infrastructure.Database;
+//using WpfUI.Infrastructure.Persistence.Database;
+//using WpfUI.Infrastructure.Persistence.Storage;
 using WpfUI.Infrastructure.Persistence.Tdms;
 
 // ---------------------------------------------------------
@@ -39,25 +55,51 @@ public class Program
         // サービスの登録 (DI)
         builder.Services.AddSingleton<INavigationService, NavigationService>();
         builder.Services.AddSingleton<ITdmsService, TdmsService>();
+        builder.Services.AddSingleton<MeasureService>();
         builder.Services.AddSingleton<WaveformService>();
+        builder.Services.AddSingleton<HistoryService>();
         builder.Services.AddSingleton<SkeletonService>();
-        //builder.Services.AddSingleton<DocTemplateSelector>();
+        // builder.Services.AddSingleton<Skeleton01Service>();
+
+        // builder.Services.AddSingleton<DbConnectionFactory>();
+        // builder.Services.AddSingleton<SqlKataCompilerFactory>();
+        // builder.Services.AddSingleton<IHistoryRepository, HistoryRepository>();
+        // builder.Services.AddSingleton<IWaveformStorageService, ParquetWaveformStorage>();
 
         // --- Navigation Mapping (The Source of Truth) ---
         builder.Services.AddNavigation(nav => nav
-            .Add<WaveformView, WaveformViewModel,
-                 WaveformExpView, WaveformExpViewModel>
-                ("Wave", "Icon.Waveform")
+
+           .Add<MeasureView, MeasureViewModel,
+                MeasureExpView, MeasureExpViewModel,
+                MeasureDocView, MeasureDocViewModel>
+                ("Measure", "Icon.Waveform")
+
+            //.Add<WaveformView, WaveformViewModel,
+            //     WaveformExpView, WaveformExpViewModel>
+            //    ("Wave", "Icon.Waveform")
 
             .Add<SkeletonView, SkeletonViewModel,
                  SkeletonExpView, SkeletonExpViewModel,
                  SkeletonDocView, SkeletonDocViewModel>
                 ("Skeleton", "Icon.Waveform")
 
+            .Add<HistoryView, HistoryViewModel,
+                 HistoryExpView, HistoryExpViewModel,
+                 HistoryDocView, HistoryDocViewModel>
+                ("History", "Icon.History")
+
+            //.Add<Skeleton01View, Skeleton01ViewModel,
+            //     Skeleton01ExpView, Skeleton01ExpViewModel,
+            //     Skeleton01DocView, Skeleton01DocViewModel>
+            //    ("Skeleton01", "Icon.Waveform")
+
             // --- 
             .Add<SettingsView, SettingsViewModel>
                 ("Settings", "Icon.Settings")
         );
+
+        // 
+        builder.Services.AddDatabase(builder.Configuration);
 
         //ConfigureServices(builder.Services);
         builder.Services.AddSingleton<App>();

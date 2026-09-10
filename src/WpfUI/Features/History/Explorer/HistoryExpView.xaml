@@ -1,0 +1,241 @@
+<!-- File: Features/History/Views/HistoryExpView.xaml -->
+<core:ViewBase
+x:TypeArguments="local:HistoryExpViewModel"
+               x:Class="WpfUI.Features.History.Explorer.HistoryExpView"
+               xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+               xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+               xmlns:local="clr-namespace:WpfUI.Features.History.Explorer"
+               xmlns:core="clr-namespace:WpfUI.Core.Base"
+               mc:Ignorable="d" 
+               xmlns:models="clr-namespace:WpfUI.Features.History.Models"
+               d:DesignHeight="450" d:DesignWidth="250">
+
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../Assets/Icons.xaml"/>
+        <ResourceDictionary Source="../Assets/Icons.Explorer.xaml"/>
+        <ResourceDictionary Source="../Assets/Styles.xaml"/>
+        <ResourceDictionary Source="../Assets/Styles.Explorer.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+    
+
+  </UserControl.Resources>
+
+  <Grid Background="{StaticResource ExplorerBg}">
+    <Grid.RowDefinitions>
+      <!-- 1. ヘッダー ＆ 検索フィルターエリア -->
+      <RowDefinition Height="Auto"/>
+      <!-- 2. カウンター ＆ 一括アクションバー -->
+      <RowDefinition Height="Auto"/>
+      <!-- 3. 履歴データカードリスト -->
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- ================= 1. 検索・フィルターエリア ================= -->
+    <Border Grid.Row="0" Background="{StaticResource CardBg}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="12">
+      <StackPanel >
+        <!-- タイトル ＆ リセットボタン -->
+        <Grid>
+          <TextBlock Text="📂 履歴データ検索" FontWeight="Bold" FontSize="14" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+          <Button Content="条件クリア" 
+                            Command="{Binding ResetFilterCommand}"
+                            HorizontalAlignment="Right"
+                            FontSize="11" Foreground="{StaticResource AccentColor}" 
+                            Background="Transparent" BorderThickness="0" Cursor="Hand"/>
+        </Grid>
+
+        <!-- フリーワード検索 -->
+        <TextBox Text="{Binding SearchText.Value, UpdateSourceTrigger=PropertyChanged}" 
+                         Padding="6,5" FontSize="12" Background="#F1F5F9" BorderThickness="1" BorderBrush="#CBD5E1">
+          <TextBox.Resources>
+            <Style TargetType="Border">
+              <Setter Property="CornerRadius" Value="4"/>
+            </Style>
+          </TextBox.Resources>
+        </TextBox>
+
+        <!-- 絞り込み条件（2列レイアウト） -->
+        <UniformGrid Columns="2">
+          <StackPanel Margin="0,0,4,0">
+            <TextBlock Text="試験種別" FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,2"/>
+            <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory.Value}" FontSize="11" Padding="4"/>
+          </StackPanel>
+          <StackPanel Margin="4,0,0,0">
+            <TextBlock Text="判定" FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,2"/>
+            <ComboBox ItemsSource="{Binding Statuses}" SelectedItem="{Binding SelectedStatus.Value}" FontSize="11" Padding="4"/>
+          </StackPanel>
+        </UniformGrid>
+
+        <!-- 日付範囲 -->
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <DatePicker Grid.Column="0" SelectedDate="{Binding StartDate.Value}" FontSize="11"/>
+          <TextBlock Grid.Column="1" Text="～" VerticalAlignment="Center" Margin="4,0" Foreground="{StaticResource TextSecondary}"/>
+          <DatePicker Grid.Column="2" SelectedDate="{Binding EndDate.Value}" FontSize="11"/>
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <!-- ================= 2. カウンター ＆ 一括アクションバー ================= -->
+    <Border Grid.Row="1" Background="#F1F5F9" Padding="12,6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="該当: " FontSize="11" Foreground="{StaticResource TextSecondary}"/>
+          <TextBlock Text="{Binding TotalCount.Value}" FontWeight="Bold" FontSize="11" Foreground="{StaticResource TextPrimary}"/>
+          <TextBlock Text=" 件" FontSize="11" Foreground="{StaticResource TextSecondary}"/>
+          <TextBlock Text=" (選択: " FontSize="11" Foreground="{StaticResource TextSecondary}" Margin="6,0,0,0"/>
+          <TextBlock Text="{Binding SelectedCount.Value}" FontWeight="Bold" FontSize="11" Foreground="{StaticResource AccentColor}"/>
+          <TextBlock Text=" 件)" FontSize="11" Foreground="{StaticResource TextSecondary}"/>
+        </StackPanel>
+
+        <!-- 一括比較ドッキングボタン -->
+        <Button Grid.Column="1" Content="+ 選択項目を比較" 
+                        Command="{Binding OpenSelectedInDockCommand}"
+                        HorizontalAlignment="Right" Padding="8,3" FontSize="11" FontWeight="SemiBold"
+                        Background="{StaticResource AccentColor}" Foreground="White" BorderThickness="0" Cursor="Hand">
+          <Button.Resources>
+            <Style TargetType="Border">
+              <Setter Property="CornerRadius" Value="3"/>
+            </Style>
+          </Button.Resources>
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- ================= 3. 履歴データカードリスト ================= -->
+    <ListBox Grid.Row="2" 
+         ItemsSource="{Binding FilteredItems.Value}" 
+         SelectionMode="Extended"
+         x:Name="HistoryListBox"
+         SelectionChanged="OnSelectionChanged"
+         PreviewMouseLeftButtonDown="OnCardPreviewMouseLeftButtonDown"
+         MouseMove="OnCardMouseMove"
+         Background="Transparent" BorderThickness="0" Padding="8">
+      <ListBox.ItemContainerStyle>
+        <Style TargetType="ListBoxItem">
+          <Setter Property="Padding" Value="0"/>
+          <Setter Property="Margin" Value="0,0,0,8"/>
+          <Setter Property="Background" Value="Transparent"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ListBoxItem">
+                <ContentPresenter />
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+      </ListBox.ItemContainerStyle>
+
+      <ListBox.ItemTemplate>
+        <DataTemplate DataType="{x:Type models:HistoryItemRecord}">
+          <Border Background="{StaticResource CardBg}" 
+                    BorderBrush="{StaticResource BorderBrush}" 
+                    BorderThickness="1" CornerRadius="6" Padding="10" Cursor="Hand">
+            <Border.Effect>
+              <DropShadowEffect BlurRadius="4" ShadowDepth="1" Direction="270" Color="#000000" Opacity="0.05"/>
+            </Border.Effect>
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+              </Grid.RowDefinitions>
+
+              <!-- 行1: ID / テスト名 ＆ 合否バッジ -->
+              <Grid Grid.Row="0" Margin="0,0,0,6">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="Bold" Foreground="{StaticResource AccentColor}" Margin="0,0,6,0"/>
+                  <TextBlock Text="{Binding TestName}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextPrimary}" ToolTip="{Binding FilePath}"/>
+                </StackPanel>
+
+                <!-- PASS / FAIL バッジ -->
+                <Border HorizontalAlignment="Right" Padding="6,1" CornerRadius="3">
+                  <Border.Style>
+                    <Style TargetType="Border">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsPass}" Value="True">
+                          <Setter Property="Background" Value="#DCFCE7"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsPass}" Value="False">
+                          <Setter Property="Background" Value="#FEE2E2"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Border.Style>
+                  <TextBlock FontSize="10" FontWeight="Bold">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding IsPass}" Value="True">
+                            <Setter Property="Text" Value="PASS"/>
+                            <Setter Property="Foreground" Value="{StaticResource PassColor}"/>
+                          </DataTrigger>
+                          <DataTrigger Binding="{Binding IsPass}" Value="False">
+                            <Setter Property="Text" Value="FAIL"/>
+                            <Setter Property="Foreground" Value="{StaticResource FailColor}"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </Border>
+              </Grid>
+
+              <!-- 行2: 主要計測値 (最大荷重 / ピーク変位) -->
+              <Grid Grid.Row="1" Background="#F8FAFC" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                  <TextBlock Text="最大荷重" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding MaxLoad}" FontWeight="Bold" FontSize="12" Foreground="{StaticResource TextPrimary}"/>
+                    <TextBlock Text=" kN" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Bottom" Margin="2,0,0,1"/>
+                  </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                  <TextBlock Text="ピーク変位" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding PeakDisplacement}" FontWeight="Bold" FontSize="12" Foreground="{StaticResource TextPrimary}"/>
+                    <TextBlock Text=" mm" FontSize="10" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Bottom" Margin="2,0,0,1"/>
+                  </StackPanel>
+                </StackPanel>
+              </Grid>
+
+              <!-- 行3: 測定日時・オペレーター ＆ 1-Click 投下ボタン -->
+              <Grid Grid.Row="2">
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="{Binding MeasuredAt, StringFormat='yyyy/MM/dd HH:mm'}" FontSize="10" Foreground="{StaticResource TextSecondary}"/>
+                  <TextBlock Text="{Binding OperatorName, StringFormat='担当: {0}'}" FontSize="10" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
+
+                <!-- 右下ペインへの直接追加ショートカットボタン -->
+                <Button Content="➔ 比較ペインへ" 
+                                Command="{Binding DataContext.OpenSingleInDockCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                Padding="6,2" FontSize="10" Background="#EFF6FF" Foreground="{StaticResource AccentColor}" 
+                                BorderBrush="#BFDBFE" BorderThickness="1" Cursor="Hand">
+                  <Button.Resources>
+                    <Style TargetType="Border">
+                      <Setter Property="CornerRadius" Value="3"/>
+                    </Style>
+                  </Button.Resources>
+                </Button>
+              </Grid>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </Grid>
+</core:ViewBase>
